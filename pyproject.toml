@@ -10,8 +10,11 @@ requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.19.1",
     "asyncpg>=0.31.0",
+    "bcrypt[passlib]>=5.0.0",
+    "passlib[bcrypt]>=1.7.4",
     "pydantic-settings>=2.15.0",
     "python-dotenv>=1.2.3",
+    "python-jose[cryptography]>=3.5.0",
     "sqlalchemy>=2.0.52",
 ]
 
