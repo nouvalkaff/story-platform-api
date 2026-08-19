@@ -12,6 +12,11 @@ class UserCreate(UserBase):
     password: str
 
 
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
 class UserResponse(UserBase):
     id: int
     is_active: bool
