@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,9 +8,20 @@ from app.schemas.user import UserCreate
 
 
 class CRUDUser:
+    @staticmethod
+    def creds_exception() -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     async def get(self, db: AsyncSession, user_id: int):
         result = await db.execute(select(User).where(User.id == user_id))
-        return result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise self.creds_exception()
+        return user
 
     async def get_by_email(self, db: AsyncSession, email: str):
         result = await db.execute(select(User).where(User.email == email))

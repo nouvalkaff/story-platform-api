@@ -17,7 +17,9 @@ class AuthService:
         user = await crud_user.get_by_email(db, credentials.email)
         if not user or not verify_password(credentials.password, user.hashed_password):
             return None
-        return create_access_token(data={"sub": str(user.id)})
+        return create_access_token(
+            data={"sub": str(user.id), "role": user.role, "email": user.email}
+        )
 
 
 auth_service = AuthService()
