@@ -18,12 +18,33 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
-@staticmethod
-def creds_exception() -> HTTPException:
+def forbidden_exception() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Forbidden access",
+    )
+
+
+def creds_exception(detail: str = "Could not validate credentials") -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid credentials",
+        detail=detail,
         headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def not_found_exception() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Not found",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def bad_request_exception(detail: str = "Bad request") -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=detail,
     )
 
 
@@ -41,14 +62,11 @@ def decode_token_to_payload(token: str) -> dict[str, Any]:
 def verify_token_matches_user(token_payload: dict, db_payload: dict) -> None:
     tp = token_payload
     dp = db_payload
-
-    if any(tp.get(field) is None for field in REQUIRED_TOKEN_FIELDS):
+    if any(not tp.get(field) for field in REQUIRED_TOKEN_FIELDS):
         raise creds_exception()
-    if any(dp[field] is None for field in REQUIRED_DB_FIELDS):
+    if any(not dp[field] for field in REQUIRED_DB_FIELDS):
         raise creds_exception()
-
     tp = {**tp, "sub": int(tp["sub"])}
-
     for tp_field, dp_field in FIELD_PAIRS:
         if tp[tp_field] != dp[dp_field]:
             raise creds_exception()
@@ -57,7 +75,7 @@ def verify_token_matches_user(token_payload: dict, db_payload: dict) -> None:
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),  # noqa: B008
-) -> User:
+) -> User | None:
     try:
         payload = decode_token_to_payload(token)
         user_id_token = payload.get("sub")
@@ -66,5 +84,7 @@ async def get_current_user(
     except JWTError:
         raise creds_exception()
     user = await crud_user.get(db, int(user_id_token))
+    if not user:
+        raise not_found_exception()
     verify_token_matches_user(payload, user.to_dict())
     return user

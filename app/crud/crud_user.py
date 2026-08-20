@@ -18,10 +18,7 @@ class CRUDUser:
 
     async def get(self, db: AsyncSession, user_id: int):
         result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        if user is None:
-            raise self.creds_exception()
-        return user
+        return result.scalar_one_or_none()
 
     async def get_by_email(self, db: AsyncSession, email: str):
         result = await db.execute(select(User).where(User.email == email))
