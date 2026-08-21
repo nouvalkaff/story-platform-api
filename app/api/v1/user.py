@@ -28,7 +28,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
     "/create",
     response_model=ApiResponse[UserResponse],
     description="Create a new user",
-    status_code=201,
+    status_code=status.HTTP_201_CREATED,
 )
 async def create(
     user_data: UserCreate,
@@ -37,7 +37,7 @@ async def create(
     try:
         user = await auth_service.register(db, user_data)
         return {
-            "status_code": 201,
+            "status_code": status.HTTP_201_CREATED,
             "status": True,
             "message": "User created successfully",
             "data": user,
@@ -55,7 +55,7 @@ async def get_my_data(
     current_user: User = Depends(get_current_user),  # noqa: B008
 ):
     return {
-        "status_code": 200,
+        "status_code": status.HTTP_200_OK,
         "status": True,
         "message": "Success",
         "data": current_user,
@@ -74,23 +74,28 @@ async def update(
     current_user: User = Depends(get_current_user),  # noqa: B008
 ):
     user_db = await crud_user.get(db, user_id)
+
     if user_db is None:
         raise not_found_exception()
+
     if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
         raise forbidden_exception()
+
     user_dict = current_user.to_dict()
+
     update_dict = update_data.model_dump(exclude_unset=True)
+
     for key, val in update_dict.items():
         if val != user_dict[key]:
             setattr(user_db, key, val)
-    db.add(user_db)
-    await db.commit()
-    await db.refresh(user_db)
+
+    updated_user_db = await crud_user.update(db, user_db)
+
     return {
-        "status_code": 200,
+        "status_code": status.HTTP_200_OK,
         "status": True,
         "message": "Details updated successfully",
-        "data": user_db,
+        "data": updated_user_db,
     }
 
 
@@ -106,28 +111,92 @@ async def update_password(
     current_user: User = Depends(get_current_user),  # noqa: B008
 ):
     old_pass = update_data.old_password
+
     new_pass = update_data.new_password
+
     user_db = await crud_user.get(db, user_id)
+
     if user_db is None:
         raise not_found_exception()
 
     if current_user.role != UserRole.ADMIN:
         if not old_pass:
             raise bad_request_exception("old_password cannot be empty")
+
         if current_user.id != user_db.id:
             raise forbidden_exception()
+
         if not verify_password(old_pass, user_db.hashed_password):
             raise creds_exception("Incorrect old password")
 
     new_hashed_password = get_password_hash(new_pass)
+
     user_db.hashed_password = new_hashed_password
 
-    db.add(user_db)
-    await db.commit()
-    await db.refresh(user_db)
+    updated_user_db = await crud_user.update(db, user_db)
+
     return {
-        "status_code": 200,
+        "status_code": status.HTTP_200_OK,
         "status": True,
         "message": f"Password user {user_id} updated succesfully",
-        "data": user_db,
+        "data": updated_user_db,
+    }
+
+
+@router.delete(
+    "/sdelete/{user_id}",
+    response_model=ApiResponse[UserResponse],
+    description="Soft delete user account",
+)
+async def soft_delete(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_user),  # noqa: B008
+):
+    user_db = await crud_user.get(db, user_id)
+
+    if user_db is None:
+        raise not_found_exception()
+
+    if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
+        raise forbidden_exception()
+
+    user_db.is_active = False
+
+    updated_user_db = await crud_user.update(db, user_db)
+
+    return {
+        "status_code": status.HTTP_200_OK,
+        "status": True,
+        "message": f"User {user_id} deactivated successfully",
+        "data": updated_user_db,
+    }
+
+
+@router.delete(
+    "/hdelete/{user_id}",
+    response_model=ApiResponse[None],
+    description="Permanently delete user account",
+    status_code=status.HTTP_200_OK,
+)
+async def hard_delete(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_user),  # noqa: B008
+):
+    user_db = await crud_user.get(db, user_id)
+
+    if user_db is None:
+        raise not_found_exception()
+
+    if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
+        raise forbidden_exception()
+
+    await crud_user.delete(db, user_db)
+
+    return {
+        "status_code": status.HTTP_200_OK,
+        "status": True,
+        "message": f"User {user_id} permanently deleted successfully",
+        "data": None,
     }
