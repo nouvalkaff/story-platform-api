@@ -1,19 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import (
-    bad_request_exception,
-    creds_exception,
-    forbidden_exception,
-    get_current_user,
-    not_found_exception,
+from app.api.deps import get_current_user
+from app.core.exception import (
+    BadRequestError,
+    ForbiddenError,
+    NotFoundError,
+    UnauthorizedError,
 )
 from app.core.security import get_password_hash, verify_password
 from app.crud.crud_user import crud_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
+from app.schemas.common import ApiResponse
 from app.schemas.user import (
-    ApiResponse,
     UserCreate,
     UserPasswordUpdate,
     UserResponse,
@@ -34,16 +34,14 @@ async def create(
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    try:
-        user = await auth_service.register(db, user_data)
-        return {
-            "status_code": status.HTTP_201_CREATED,
-            "status": True,
-            "message": "User created successfully",
-            "data": user,
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    user = await auth_service.register(db, user_data)
+
+    return {
+        "status_code": status.HTTP_201_CREATED,
+        "status": True,
+        "message": "User created successfully",
+        "data": user,
+    }
 
 
 @router.get(
@@ -76,13 +74,12 @@ async def update(
     user_db = await crud_user.get(db, user_id)
 
     if user_db is None:
-        raise not_found_exception()
+        raise NotFoundError()
 
     if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
-        raise forbidden_exception()
+        raise ForbiddenError()
 
     user_dict = current_user.to_dict()
-
     update_dict = update_data.model_dump(exclude_unset=True)
 
     for key, val in update_dict.items():
@@ -111,28 +108,23 @@ async def update_password(
     current_user: User = Depends(get_current_user),  # noqa: B008
 ):
     old_pass = update_data.old_password
-
     new_pass = update_data.new_password
-
     user_db = await crud_user.get(db, user_id)
 
     if user_db is None:
-        raise not_found_exception()
+        raise NotFoundError()
 
     if current_user.role != UserRole.ADMIN:
         if not old_pass:
-            raise bad_request_exception("old_password cannot be empty")
+            raise BadRequestError("old_password cannot be empty")
 
         if current_user.id != user_db.id:
-            raise forbidden_exception()
+            raise ForbiddenError()
 
         if not verify_password(old_pass, user_db.hashed_password):
-            raise creds_exception("Incorrect old password")
+            raise UnauthorizedError("Incorrect old password")
 
-    new_hashed_password = get_password_hash(new_pass)
-
-    user_db.hashed_password = new_hashed_password
-
+    user_db.hashed_password = get_password_hash(new_pass)
     updated_user_db = await crud_user.update(db, user_db)
 
     return {
@@ -156,13 +148,12 @@ async def soft_delete(
     user_db = await crud_user.get(db, user_id)
 
     if user_db is None:
-        raise not_found_exception()
+        raise NotFoundError()
 
     if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
-        raise forbidden_exception()
+        raise ForbiddenError()
 
     user_db.is_active = False
-
     updated_user_db = await crud_user.update(db, user_db)
 
     return {
@@ -187,10 +178,10 @@ async def hard_delete(
     user_db = await crud_user.get(db, user_id)
 
     if user_db is None:
-        raise not_found_exception()
+        raise NotFoundError()
 
     if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
-        raise forbidden_exception()
+        raise ForbiddenError()
 
     await crud_user.delete(db, user_db)
 

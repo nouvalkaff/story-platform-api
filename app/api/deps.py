@@ -1,11 +1,12 @@
 from typing import Any
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.exception import NotFoundError, UnauthorizedError
 from app.crud.crud_user import crud_user
 from app.db.session import get_db
 from app.models.user import User
@@ -18,36 +19,6 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
-def forbidden_exception() -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Forbidden access",
-    )
-
-
-def creds_exception(detail: str = "Could not validate credentials") -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail=detail,
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-
-def not_found_exception() -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Not found",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-
-def bad_request_exception(detail: str = "Bad request") -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=detail,
-    )
-
-
 def decode_token_to_payload(token: str) -> dict[str, Any]:
     try:
         payload = jwt.decode(
@@ -56,20 +27,20 @@ def decode_token_to_payload(token: str) -> dict[str, Any]:
         payload = {**payload, "sub": int(payload["sub"])}
         return payload
     except (JWTError, ValueError):
-        raise creds_exception()
+        raise UnauthorizedError()
 
 
 def verify_token_matches_user(token_payload: dict, db_payload: dict) -> None:
     tp = token_payload
     dp = db_payload
     if any(not tp.get(field) for field in REQUIRED_TOKEN_FIELDS):
-        raise creds_exception()
+        raise UnauthorizedError()
     if any(not dp[field] for field in REQUIRED_DB_FIELDS):
-        raise creds_exception()
+        raise UnauthorizedError()
     tp = {**tp, "sub": int(tp["sub"])}
     for tp_field, dp_field in FIELD_PAIRS:
         if tp[tp_field] != dp[dp_field]:
-            raise creds_exception()
+            raise UnauthorizedError()
 
 
 async def get_current_user(
@@ -80,11 +51,11 @@ async def get_current_user(
         payload = decode_token_to_payload(token)
         user_id_token = payload.get("sub")
         if user_id_token is None:
-            raise creds_exception()
+            raise UnauthorizedError()
     except JWTError:
-        raise creds_exception()
+        raise UnauthorizedError()
     user = await crud_user.get(db, int(user_id_token))
     if not user:
-        raise not_found_exception()
+        raise NotFoundError()
     verify_token_matches_user(payload, user.to_dict())
     return user

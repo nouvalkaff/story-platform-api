@@ -1,11 +1,8 @@
 from datetime import datetime
-from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.models.user import UserRole
-
-T = TypeVar("T")
 
 
 class UserBase(BaseModel):
@@ -35,17 +32,9 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class ApiResponse[T](BaseModel):
-    status_code: int
-    status: bool
-    message: str
-    data: T
-
-
 class UserResponse(UserBase):
     id: int
     is_active: bool
-    role: UserRole
     created_at: datetime
     updated_at: datetime
 
