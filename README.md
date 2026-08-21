@@ -27,6 +27,12 @@ A RESTful backend for a story publishing platform built with **FastAPI**, **Post
 - User profile updates
 - Password changes
 - Role-based authorization
+- User account soft deletion
+- Permanent user account deletion
+- Custom application exceptions
+- Centralized global exception handling
+- Standardized API error responses
+- Centralized database transaction rollback
 - Async PostgreSQL access
 - Alembic database migrations
 - Versioned API routes (`/api/v1`)
@@ -49,11 +55,11 @@ story-platform-api/
 │   ├── api/
 │   │   ├── deps.py        # Shared API dependencies
 │   │   └── v1/            # Version 1 endpoints
-│   ├── core/              # Configuration, security, logging
+│   ├── core/              # Configuration, security, logging, and exceptions
 │   ├── crud/              # Database access layer
-│   ├── db/                # SQLAlchemy base and session
+│   ├── db/                # SQLAlchemy base, async session, and transaction handling
 │   ├── models/            # SQLAlchemy models
-│   ├── schemas/           # Pydantic schemas
+│   ├── schemas/           # Pydantic request, response, and common API schemas
 │   ├── services/          # Business logic
 │   ├── utils/             # Shared utilities
 │   └── main.py            # Application entry point
@@ -109,14 +115,69 @@ Docs: `http://127.0.0.1:8000/docs`
 
 Base path: `/api/v1`
 
-| Method  | Endpoint                                  | Description                              |
-| ------- | ----------------------------------------- | ---------------------------------------- |
-| `POST`  | `/api/v1/auth/login`                      | Authenticate and receive an access token |
-| `POST`  | `/api/v1/users/create`                    | Create a user                            |
-| `GET`   | `/api/v1/users/me`                        | Get the authenticated user               |
-| `PATCH` | `/api/v1/users/{user_id}`                 | Update user details                      |
-| `PATCH` | `/api/v1/users/change-password/{user_id}` | Change a user's password                 |
-| `GET`   | `/health`                                 | Application health check                 |
+| Method   | Endpoint                                  | Description                              |
+| -------- | ----------------------------------------- | ---------------------------------------- |
+| `POST`   | `/api/v1/auth/login`                      | Authenticate and receive an access token |
+| `POST`   | `/api/v1/users/create`                    | Create a user                            |
+| `GET`    | `/api/v1/users/me`                        | Get the authenticated user               |
+| `PATCH`  | `/api/v1/users/{user_id}`                 | Update user details                      |
+| `PATCH`  | `/api/v1/users/change-password/{user_id}` | Change a user's password                 |
+| `DELETE` | `/api/v1/users/sdelete/{user_id}`         | Deactivate a user account                |
+| `DELETE` | `/api/v1/users/hdelete/{user_id}`         | Permanently delete a user account        |
+| `GET`    | `/health`                                 | Application health check                 |
+
+## Error Handling
+
+The application uses centralized exception handling to keep API error responses consistent and avoid repetitive `try/except` blocks across endpoints.
+
+Handled exceptions include:
+
+- Application-specific exceptions
+- FastAPI / Starlette HTTP exceptions
+- Request validation errors
+- Pydantic validation errors
+- Database integrity errors
+- SQLAlchemy errors
+- Unexpected application errors
+
+Error responses follow a consistent structure:
+
+```json
+{
+  "status_code": 400,
+  "status": false,
+  "message": "Bad request",
+  "data": null
+}
+```
+
+Internal exception details are not exposed to clients. Application-specific exceptions are separated from the API layer, allowing services to raise domain-related errors without directly depending on `HTTPException`.
+
+## Database Transaction Handling
+
+Database sessions use SQLAlchemy's asynchronous `AsyncSession`.
+
+Transaction rollback is handled centrally through the database session dependency, allowing CRUD and service functions to propagate database exceptions without repeating rollback logic in every operation.
+
+```text
+Request
+   ↓
+Router
+   ↓
+Service
+   ↓
+CRUD
+   ↓
+Database
+   ↓
+Exception
+   ↓
+Session Rollback
+   ↓
+Global Exception Handler
+   ↓
+Standardized API Response
+```
 
 ## API Documentation
 
@@ -146,4 +207,4 @@ POST /api/v1/auth/login
 
 ## License
 
-No license has been added yet.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
