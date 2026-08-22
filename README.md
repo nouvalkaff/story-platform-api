@@ -183,7 +183,7 @@ Standardized API Response
 
 The API collection is available on Postman:
 
-[View Story Platform API on Postman](https://www.postman.com/nouvalkaffs-team/workspace/story-platform-api/collection/23758510-bcf1765c-b7b0-4879-8f7c-9daac2391e9b?action=share&source=copy-link&creator=23758510)
+[View Story Platform API on Postman](https://www.postman.com/nouvalkaffs-team/workspace/story-platform-api/collection/23758510-b4101b6e-113b-4952-9a04-be148b92f795?action=share&source=copy-link&creator=23758510)
 
 You can also use the built-in Swagger UI while the application is running:
 

@@ -9,7 +9,7 @@ from app.services.auth_service import auth_service
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/login")
+@router.post("/login", status_code=201, description="Login and get access token")
 async def login(
     credentials: LoginRequest,
     db: AsyncSession = Depends(get_db),  # noqa: B008

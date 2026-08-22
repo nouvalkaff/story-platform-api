@@ -8,7 +8,6 @@ from app.models.user import UserRole
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str | None = None
-    role: UserRole = UserRole.USER
 
 
 class UserCreate(UserBase):
@@ -37,6 +36,6 @@ class UserResponse(UserBase):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    role: UserRole
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
