@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import decode_token_to_payload, get_current_user, oauth2_scheme
 from app.core.exception import (
     BadRequestError,
     ForbiddenError,
@@ -33,7 +33,16 @@ router = APIRouter(prefix="/users", tags=["Users"])
 async def create(
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    token: str | None = Depends(oauth2_scheme),
 ):
+    print(token, "<<===================================================")
+    if token:
+        payload = decode_token_to_payload(token)
+        if payload["role"] != UserRole.ADMIN:
+            raise ForbiddenError()
+        user_data.created_by = payload["user_id"]
+        user_data.updated_by = payload["user_id"]
+
     user = await auth_service.register(db, user_data)
 
     return {

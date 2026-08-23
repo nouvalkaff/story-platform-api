@@ -12,6 +12,8 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    created_by: int | None = None
+    updated_by: int | None = None
 
 
 class UserUpdate(BaseModel):

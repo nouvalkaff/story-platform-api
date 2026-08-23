@@ -24,16 +24,25 @@ class CRUDUser:
         result = await db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
-    async def create(self, db: AsyncSession, obj_in: UserCreate) -> User:
-        hashed_password = get_password_hash(obj_in.password)
+    async def create(self, db: AsyncSession, user_data: UserCreate) -> User:
+        hashed_password = get_password_hash(user_data.password)
 
         db_obj = User(
-            email=obj_in.email,
+            email=user_data.email,
             hashed_password=hashed_password,
-            full_name=obj_in.full_name,
+            full_name=user_data.full_name,
+            created_by=user_data.created_by,
+            updated_by=user_data.updated_by,
         )
 
         db.add(db_obj)
+
+        if db_obj.created_by is None and db_obj.updated_by is None:
+            await db.flush()
+
+            db_obj.created_by = db_obj.id
+
+            db_obj.updated_by = db_obj.id
 
         await db.commit()
         await db.refresh(db_obj)
