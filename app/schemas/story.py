@@ -12,17 +12,13 @@ class StoryBase(BaseModel):
 
 
 class StoryCreate(StoryBase):
-    author_id: int
-    created_by: int
-    updated_by: int
+    pass
 
 
 class StoryUpdate(BaseModel):
     title: str | None = None
     content: str | None = None
     genre: StoryGenre | None = None
-    is_published: bool | None = None
-    updated_by: int | None = None
 
 
 class StoryResponse(StoryBase):

@@ -4,11 +4,11 @@ from app.core.exception import ConflictError
 from app.core.security import create_access_token, verify_password
 from app.crud.crud_user import crud_user
 from app.models.user import User
-from app.schemas.user import LoginRequest, UserCreate
+from app.schemas.user import LoginRequest, UserCreateDetail
 
 
 class AuthService:
-    async def register(self, db: AsyncSession, user_data: UserCreate) -> User:
+    async def register(self, db: AsyncSession, user_data: UserCreateDetail) -> User:
         existing = await crud_user.get_by_email(db, user_data.email)
 
         if existing:

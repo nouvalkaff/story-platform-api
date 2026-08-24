@@ -7,11 +7,14 @@ from app.models.user import UserRole
 
 class UserBase(BaseModel):
     email: EmailStr
-    full_name: str | None = None
+    full_name: str
 
 
-class UserCreate(UserBase):
+class UserCreatePayload(UserBase):
     password: str
+
+
+class UserCreateDetail(UserCreatePayload):
     created_by: int | None = None
     updated_by: int | None = None
 

@@ -1,7 +1,12 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import decode_token_to_payload, get_current_user, oauth2_scheme
+from app.api.deps import (
+    decode_token_to_payload,
+    get_authenticated_user,
+    oauth2_scheme,
+    validate_auth,
+)
 from app.core.exception import (
     BadRequestError,
     ForbiddenError,
@@ -11,10 +16,11 @@ from app.core.exception import (
 from app.core.security import get_password_hash, verify_password
 from app.crud.crud_user import crud_user
 from app.db.session import get_db
-from app.models.user import User, UserRole
+from app.models.user import UserRole
 from app.schemas.common import ApiResponse
 from app.schemas.user import (
-    UserCreate,
+    UserCreateDetail,
+    UserCreatePayload,
     UserPasswordUpdate,
     UserResponse,
     UserUpdate,
@@ -31,19 +37,22 @@ router = APIRouter(prefix="/users", tags=["Users"])
     status_code=status.HTTP_201_CREATED,
 )
 async def create(
-    user_data: UserCreate,
+    user_data: UserCreatePayload,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     token: str | None = Depends(oauth2_scheme),
 ):
-    print(token, "<<===================================================")
+    new_user = UserCreateDetail(**user_data.model_dump())
+
     if token:
-        payload = decode_token_to_payload(token)
+        payload = decode_token_to_payload(token, is_raw_token=True)
+
         if payload["role"] != UserRole.ADMIN:
             raise ForbiddenError()
-        user_data.created_by = payload["user_id"]
-        user_data.updated_by = payload["user_id"]
 
-    user = await auth_service.register(db, user_data)
+        new_user.created_by = payload["sub"]
+        new_user.updated_by = payload["sub"]
+
+    user = await auth_service.register(db, new_user)
 
     return {
         "status_code": status.HTTP_201_CREATED,
@@ -57,10 +66,14 @@ async def create(
     "/me",
     response_model=ApiResponse[UserResponse],
     description="Get user data by id from token",
+    dependencies=[Depends(validate_auth)],
 )
 async def get_my_data(
-    current_user: User = Depends(get_current_user),  # noqa: B008
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
+    current_user = await get_authenticated_user(request, db)
+
     return {
         "status_code": status.HTTP_200_OK,
         "status": True,
@@ -73,27 +86,32 @@ async def get_my_data(
     "/{user_id}",
     response_model=ApiResponse[UserResponse],
     description="Update user email and full name",
+    dependencies=[Depends(validate_auth)],
 )
 async def update(
+    request: Request,
     user_id: int,
     update_data: UserUpdate,
     db: AsyncSession = Depends(get_db),  # noqa: B008
-    current_user: User = Depends(get_current_user),  # noqa: B008
 ):
     user_db = await crud_user.get(db, user_id)
 
     if user_db is None:
         raise NotFoundError()
 
+    current_user = await get_authenticated_user(request, db)
+
     if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
         raise ForbiddenError()
 
-    user_dict = current_user.to_dict()
+    user_dict = user_db.to_dict()
     update_dict = update_data.model_dump(exclude_unset=True)
 
     for key, val in update_dict.items():
         if val != user_dict[key]:
             setattr(user_db, key, val)
+
+    user_db.updated_by = current_user.id
 
     updated_user_db = await crud_user.update(db, user_db)
 
@@ -109,12 +127,13 @@ async def update(
     "/change-password/{user_id}",
     response_model=ApiResponse[UserResponse],
     description="Update user password",
+    dependencies=[Depends(validate_auth)],
 )
 async def update_password(
+    request: Request,
     user_id: int,
     update_data: UserPasswordUpdate,
     db: AsyncSession = Depends(get_db),  # noqa: B008
-    current_user: User = Depends(get_current_user),  # noqa: B008
 ):
     old_pass = update_data.old_password
     new_pass = update_data.new_password
@@ -122,6 +141,8 @@ async def update_password(
 
     if user_db is None:
         raise NotFoundError()
+
+    current_user = await get_authenticated_user(request, db)
 
     if current_user.role != UserRole.ADMIN:
         if not old_pass:
@@ -134,12 +155,15 @@ async def update_password(
             raise UnauthorizedError("Incorrect old password")
 
     user_db.hashed_password = get_password_hash(new_pass)
+
+    user_db.updated_by = current_user.id
+
     updated_user_db = await crud_user.update(db, user_db)
 
     return {
         "status_code": status.HTTP_200_OK,
         "status": True,
-        "message": f"Password user {user_id} updated succesfully",
+        "message": f"Password user {user_id} updated successfully",
         "data": updated_user_db,
     }
 
@@ -148,21 +172,27 @@ async def update_password(
     "/sdelete/{user_id}",
     response_model=ApiResponse[UserResponse],
     description="Soft delete user account",
+    dependencies=[Depends(validate_auth)],
 )
 async def soft_delete(
+    request: Request,
     user_id: int,
     db: AsyncSession = Depends(get_db),  # noqa: B008
-    current_user: User = Depends(get_current_user),  # noqa: B008
 ):
     user_db = await crud_user.get(db, user_id)
 
     if user_db is None:
         raise NotFoundError()
 
+    current_user = await get_authenticated_user(request, db)
+
     if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
         raise ForbiddenError()
 
     user_db.is_active = False
+
+    user_db.updated_by = current_user.id
+
     updated_user_db = await crud_user.update(db, user_db)
 
     return {
@@ -178,16 +208,19 @@ async def soft_delete(
     response_model=ApiResponse[None],
     description="Permanently delete user account",
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(validate_auth)],
 )
 async def hard_delete(
+    request: Request,
     user_id: int,
     db: AsyncSession = Depends(get_db),  # noqa: B008
-    current_user: User = Depends(get_current_user),  # noqa: B008
 ):
     user_db = await crud_user.get(db, user_id)
 
     if user_db is None:
         raise NotFoundError()
+
+    current_user = await get_authenticated_user(request, db)
 
     if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
         raise ForbiddenError()

@@ -21,5 +21,5 @@ async def login(
         "status_code": 201,
         "status": True,
         "access_token": token,
-        "token_type": "bearer",
+        "token_type": "Bearer",
     }

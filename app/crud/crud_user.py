@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_password_hash
 from app.models.user import User
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreateDetail
 
 
 class CRUDUser:
@@ -24,7 +24,7 @@ class CRUDUser:
         result = await db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
-    async def create(self, db: AsyncSession, user_data: UserCreate) -> User:
+    async def create(self, db: AsyncSession, user_data: UserCreateDetail) -> User:
         hashed_password = get_password_hash(user_data.password)
 
         db_obj = User(
@@ -41,7 +41,6 @@ class CRUDUser:
             await db.flush()
 
             db_obj.created_by = db_obj.id
-
             db_obj.updated_by = db_obj.id
 
         await db.commit()
