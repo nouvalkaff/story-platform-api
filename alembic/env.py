@@ -7,14 +7,15 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-# import model lainnya nanti di sini
-# from app.models.user import User  # sebenarnya cukup di base.py
 # Import settings untuk baca .env
 from app.core.config import get_settings
 
 # Import Base dan model
 from app.db.base import Base
+from app.models.story import Story  # noqa: F401
 from app.models.user import User  # noqa: F401
+
+target_metadata = Base.metadata
 
 config = context.config
 
@@ -23,8 +24,6 @@ if config.config_file_name is not None:
 
 # OVERRIDE: pakai URL dari .env
 config.set_main_option("sqlalchemy.url", get_settings().database_url)
-
-target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
