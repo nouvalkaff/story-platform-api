@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_authenticated_user, validate_auth
 from app.crud.crud_story import crud_story
 from app.db.session import get_db
-from app.models.story import StoryGenre
 from app.schemas.common import ApiResponse
 from app.schemas.story import StoryCreate, StoryCreateDetail, StoryResponse
 
@@ -25,11 +24,8 @@ async def add(
 ):
     user = await get_authenticated_user(request, db)
 
-    genre = new_story_payload.genre
-
     new_story_detail = StoryCreateDetail(
         **new_story_payload.model_dump(),
-        genre=genre if genre else StoryGenre.UNSPECIFIED,
         author_id=user.id,
         created_by=user.id,
         updated_by=user.id,

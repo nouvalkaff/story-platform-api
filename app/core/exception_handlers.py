@@ -1,15 +1,86 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from pydantic_core import ErrorDetails
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.exception import AppException
 from app.core.logging import logger
 from app.schemas.common import ApiResponse
+
+SENSITIVE_FIELD_NAMES = frozenset(
+    {
+        "access_token",
+        "api_key",
+        "authorization",
+        "credential",
+        "credentials",
+        "email",
+        "new_password",
+        "old_password",
+        "password",
+        "refresh_token",
+        "secret",
+        "token",
+    }
+)
+SENSITIVE_MESSAGE_TERMS = ("email", "password", "token", "credential", "secret")
+
+
+def _validation_error_message(errors: Sequence[ErrorDetails]) -> str:
+    if not errors:
+        return "Invalid request data"
+
+    locations = [error["loc"] for error in errors]
+    if any(
+        isinstance(part, str) and part.casefold() in SENSITIVE_FIELD_NAMES
+        for location in locations
+        for part in location
+    ):
+        return "Invalid request data"
+
+    error = errors[0]
+    field = next(
+        (
+            part
+            for part in reversed(error["loc"])
+            if isinstance(part, str)
+            and part not in {"body", "cookie", "header", "path", "query"}
+        ),
+        None,
+    )
+
+    if field is None:
+        return "Invalid request data"
+
+    if error["type"] == "missing":
+        return f"{field} is required"
+    if error["type"] == "enum":
+        context = error.get("ctx")
+        expected = context.get("expected") if context else None
+        if isinstance(expected, str):
+            return f"{field} must be one of: {expected}"
+        return f"{field} has an invalid value"
+    if error["type"] == "extra_forbidden":
+        return f"{field} is not allowed"
+
+    return f"{field} is invalid"
+
+
+def _app_exception_message(exc: AppException) -> str:
+    """Hide authentication and credential-related error details from clients."""
+    message = exc.message
+    if exc.status_code in {
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+    } or any(term in message.casefold() for term in SENSITIVE_MESSAGE_TERMS):
+        return exc.default_message
+
+    return message
 
 
 def error_response(
@@ -38,7 +109,10 @@ def register_exception_handlers(app: FastAPI) -> None:
             exc.message,
         )
 
-        return error_response(status_code=exc.status_code, message=exc.message)
+        return error_response(
+            status_code=exc.status_code,
+            message=_app_exception_message(exc),
+        )
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(
@@ -69,16 +143,17 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request,
         exc: RequestValidationError,
     ) -> JSONResponse:
+        message = _validation_error_message(exc.errors())
         logger.warning(
             "Request validation error | %s %s | %s",
             request.method,
             request.url.path,
-            exc.errors(),
+            message,
         )
 
         return error_response(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            message="Invalid request data",
+            message=message,
         )
 
     @app.exception_handler(ValidationError)
@@ -86,16 +161,17 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request,
         exc: ValidationError,
     ) -> JSONResponse:
+        message = _validation_error_message(exc.errors())
         logger.warning(
             "Pydantic validation error | %s %s | %s",
             request.method,
             request.url.path,
-            exc.errors(),
+            message,
         )
 
         return error_response(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            message="Validation failed",
+            message=message,
         )
 
     @app.exception_handler(ValueError)
