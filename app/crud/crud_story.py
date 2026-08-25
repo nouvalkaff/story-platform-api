@@ -1,6 +1,8 @@
 from datetime import datetime
+from typing import Any, cast
 
-from sqlalchemy import Row, select
+from sqlalchemy import Row, delete, func, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.story import Story, StoryGenre
@@ -22,6 +24,13 @@ class CRUDStory:
     async def get(self, db: AsyncSession, story_id: int) -> Story | None:
         result = await db.execute(select(Story).where(Story.id == story_id))
         return result.scalar_one_or_none()
+
+    async def count_by_author(self, db: AsyncSession, author_id: int) -> int:
+        statement = (
+            select(func.count()).select_from(Story).where(Story.author_id == author_id)
+        )
+        result = await db.execute(statement)
+        return result.scalar_one()
 
     async def get_by_title(
         self, db: AsyncSession, title: str
@@ -93,6 +102,19 @@ class CRUDStory:
     async def delete(self, db: AsyncSession, story: Story) -> None:
         await db.delete(story)
         await db.commit()
+
+    async def delete_by_author(
+        self,
+        db: AsyncSession,
+        author_id: int,
+        *,
+        commit: bool = True,
+    ) -> int:
+        statement = delete(Story).where(Story.author_id == author_id)
+        result = cast(CursorResult[Any], await db.execute(statement))
+        if commit:
+            await db.commit()
+        return result.rowcount or 0
 
 
 crud_story = CRUDStory()

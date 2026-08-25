@@ -6,7 +6,12 @@ from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.exception import ForbiddenError, NotFoundError, UnauthorizedError
+from app.core.exception import (
+    BadRequestError,
+    ForbiddenError,
+    NotFoundError,
+    UnauthorizedError,
+)
 from app.crud.crud_user import crud_user
 from app.models.user import User, UserRole
 from app.schemas.user import TokenPayload
@@ -91,23 +96,32 @@ def decode_token_to_payload(
 
 
 def validate_user_access(payload: TokenPayload, target_user_id: int) -> None:
+    print(("payload", payload))
+    print(("target_user_id", target_user_id))
     if payload.sub != target_user_id:
         raise ForbiddenError()
 
 
 def validate_admin_access(
     payload: TokenPayload,
+    request: Request | None = None,
     is_validate_access: bool = False,
-    user_id_db: int | None = None,
 ) -> None:
     if payload.role == UserRole.ADMIN:
         return
 
     if is_validate_access:
-        if user_id_db is None:
-            raise ForbiddenError()
+        if request is None:
+            raise BadRequestError("Request context is required")
 
-        validate_user_access(payload, user_id_db)
+        target_user_id = request.path_params.get("user_id")
+
+        if target_user_id is None:
+            raise BadRequestError("User ID is required")
+
+        target_user_id = int(target_user_id)
+
+        validate_user_access(payload, target_user_id)
         return
 
     raise ForbiddenError()
@@ -136,6 +150,6 @@ async def authenticate_user(
     _verify_token_matches_user(payload, user.to_dict())
 
     if is_check_admin:
-        validate_admin_access(payload, is_validate_access, user.id)
+        validate_admin_access(payload, request, is_validate_access)
 
     return user

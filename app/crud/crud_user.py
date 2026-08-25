@@ -71,9 +71,16 @@ class CRUDUser:
 
         return user_detail
 
-    async def delete(self, db: AsyncSession, user_detail: User) -> None:
+    async def delete(
+        self,
+        db: AsyncSession,
+        user_detail: User,
+        *,
+        commit: bool = True,
+    ) -> None:
         await db.delete(user_detail)
-        await db.commit()
+        if commit:
+            await db.commit()
 
 
 crud_user = CRUDUser()

@@ -15,6 +15,7 @@ from app.core.exception import (
     UnauthorizedError,
 )
 from app.core.security import get_password_hash, verify_password
+from app.crud.crud_story import crud_story
 from app.crud.crud_user import crud_user
 from app.db.session import get_db
 from app.models.user import UserRole
@@ -252,6 +253,7 @@ async def soft_delete(
 async def hard_delete(
     request: Request,
     user_id: int,
+    is_agree: bool = False,
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     user_db = await crud_user.get(db, user_id)
@@ -266,7 +268,13 @@ async def hard_delete(
         is_validate_access=True,
     )
 
-    await crud_user.delete(db, user_db)
+    story_count = await crud_story.count_by_author(db, user_id)
+    if story_count > 0 and not is_agree:
+        raise ConflictError("User cannot be deleted because they still own stories")
+
+    await crud_story.delete_by_author(db, user_id, commit=False)
+    await crud_user.delete(db, user_db, commit=False)
+    await db.commit()
 
     return {
         "status_code": status.HTTP_200_OK,
