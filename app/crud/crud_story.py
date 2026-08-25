@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, cast
 
-from sqlalchemy import Row, delete, func, select
+from sqlalchemy import Row, delete, func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -115,6 +115,24 @@ class CRUDStory:
         if commit:
             await db.commit()
         return result.rowcount or 0
+
+    async def clear_audit_references(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        *,
+        commit: bool = True,
+    ) -> None:
+        await db.execute(
+            update(Story).where(Story.created_by == user_id).values(created_by=None)
+        )
+
+        await db.execute(
+            update(Story).where(Story.updated_by == user_id).values(updated_by=None)
+        )
+
+        if commit:
+            await db.commit()
 
 
 crud_story = CRUDStory()

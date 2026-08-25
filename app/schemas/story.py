@@ -17,8 +17,8 @@ class StoryCreate(StoryBase):
 
 class StoryCreateDetail(StoryCreate):
     author_id: int
-    created_by: int
-    updated_by: int
+    created_by: int | None
+    updated_by: int | None
 
 
 class StoryUpdate(BaseModel):

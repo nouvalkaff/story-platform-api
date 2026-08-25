@@ -67,9 +67,9 @@ class Story(Base):
         nullable=True,
     )
 
-    created_by: Mapped[int] = mapped_column(
+    created_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id"),
-        nullable=False,
+        nullable=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -77,9 +77,9 @@ class Story(Base):
         server_default=func.now(),
     )
 
-    updated_by: Mapped[int] = mapped_column(
+    updated_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id"),
-        nullable=False,
+        nullable=True,
     )
 
     updated_at: Mapped[datetime] = mapped_column(

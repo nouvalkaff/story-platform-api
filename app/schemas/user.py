@@ -44,9 +44,9 @@ class UserResponse(UserBase):
     id: int
     is_active: bool
     created_at: datetime
-    created_by: int
+    created_by: int | None
     updated_at: datetime
-    updated_by: int
+    updated_by: int | None
     role: UserRole
 
     model_config = ConfigDict(from_attributes=True)

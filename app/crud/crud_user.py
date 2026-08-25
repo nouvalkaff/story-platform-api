@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exception import BadRequestError
@@ -79,6 +79,24 @@ class CRUDUser:
         commit: bool = True,
     ) -> None:
         await db.delete(user_detail)
+        if commit:
+            await db.commit()
+
+    async def clear_audit_references(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        *,
+        commit: bool = True,
+    ) -> None:
+        await db.execute(
+            update(User).where(User.created_by == user_id).values(created_by=None)
+        )
+
+        await db.execute(
+            update(User).where(User.updated_by == user_id).values(updated_by=None)
+        )
+
         if commit:
             await db.commit()
 

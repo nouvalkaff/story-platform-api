@@ -273,6 +273,8 @@ async def hard_delete(
         raise ConflictError("User cannot be deleted because they still own stories")
 
     await crud_story.delete_by_author(db, user_id, commit=False)
+    await crud_story.clear_audit_references(db, user_id, commit=False)
+    await crud_user.clear_audit_references(db, user_id, commit=False)
     await crud_user.delete(db, user_db, commit=False)
     await db.commit()
 

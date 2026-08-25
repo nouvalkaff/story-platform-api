@@ -96,8 +96,6 @@ def decode_token_to_payload(
 
 
 def validate_user_access(payload: TokenPayload, target_user_id: int) -> None:
-    print(("payload", payload))
-    print(("target_user_id", target_user_id))
     if payload.sub != target_user_id:
         raise ForbiddenError()
 
