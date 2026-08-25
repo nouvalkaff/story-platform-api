@@ -9,6 +9,7 @@ from app.api.deps import (
 )
 from app.core.exception import (
     BadRequestError,
+    ConflictError,
     ForbiddenError,
     NotFoundError,
     UnauthorizedError,
@@ -103,6 +104,12 @@ async def update(
 
     if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
         raise ForbiddenError()
+
+    if update_data.email is not None:
+        is_email_exist = await crud_user.get_by_email(db, update_data.email)
+
+        if is_email_exist:
+            raise ConflictError("Email already registered")
 
     user_dict = user_db.to_dict()
     update_dict = update_data.model_dump(exclude_unset=True)
