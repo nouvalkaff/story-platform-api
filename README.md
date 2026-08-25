@@ -91,6 +91,7 @@ Create a `.env` file in the project root:
 ```env
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/story_platform
 SECRET_KEY=replace-with-a-secure-secret
+ENVIRONMENT=development
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 ```

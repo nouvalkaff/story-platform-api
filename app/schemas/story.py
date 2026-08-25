@@ -32,9 +32,9 @@ class StoryResponse(StoryBase):
     is_published: bool
     author_id: int
     published_at: datetime | None
-    created_by: int
+    created_by: int | None
     created_at: datetime
-    updated_by: int
+    updated_by: int | None
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
