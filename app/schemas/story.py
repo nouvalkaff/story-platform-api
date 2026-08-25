@@ -15,6 +15,12 @@ class StoryCreate(StoryBase):
     pass
 
 
+class StoryCreateDetail(StoryCreate):
+    author_id: int
+    created_by: int
+    updated_by: int
+
+
 class StoryUpdate(BaseModel):
     title: str | None = None
     content: str | None = None

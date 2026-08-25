@@ -4,30 +4,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.story import Story, StoryGenre
-from app.schemas.story import StoryCreate, StoryUpdate
+from app.schemas.story import StoryCreateDetail, StoryUpdate
 
 
 class CRUDStory:
-    """Database operations for stories."""
+    async def create(self, db: AsyncSession, story_data: StoryCreateDetail) -> Story:
+        story = Story(**story_data.model_dump())
 
-    async def create(
-        self,
-        db: AsyncSession,
-        story_data: StoryCreate,
-        *,
-        author_id: int,
-        created_by: int,
-        updated_by: int,
-    ) -> Story:
-        story = Story(
-            **story_data.model_dump(),
-            author_id=author_id,
-            created_by=created_by,
-            updated_by=updated_by,
-        )
         db.add(story)
+
         await db.commit()
+
         await db.refresh(story)
+
         return story
 
     async def get(self, db: AsyncSession, story_id: int) -> Story | None:

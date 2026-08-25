@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.exception import ForbiddenError, NotFoundError, UnauthorizedError
 from app.crud.crud_user import crud_user
-from app.db.session import get_db
 from app.models.user import User, UserRole
 
 REQUIRED_TOKEN_FIELDS = ("sub", "role", "email")
@@ -90,10 +89,7 @@ def decode_token_to_payload(
         raise UnauthorizedError()
 
 
-async def get_authenticated_user(
-    request: Request,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
-) -> User:
+async def get_authenticated_user(request: Request, db: AsyncSession) -> User:
     scheme_token = cast(str, request.headers.get("Authorization"))
 
     payload = decode_token_to_payload(scheme_token)

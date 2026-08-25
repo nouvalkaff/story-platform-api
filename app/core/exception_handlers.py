@@ -77,7 +77,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
         return error_response(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             message="Invalid request data",
         )
 
@@ -94,7 +94,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
         return error_response(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             message="Validation failed",
         )
 

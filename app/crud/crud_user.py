@@ -8,14 +8,6 @@ from app.schemas.user import UserCreateDetail
 
 
 class CRUDUser:
-    @staticmethod
-    def creds_exception() -> HTTPException:
-        return HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
     async def get(self, db: AsyncSession, user_id: int) -> User | None:
         result = await db.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
