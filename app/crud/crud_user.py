@@ -1,7 +1,7 @@
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exception import BadRequestError
 from app.core.security import get_password_hash
 from app.models.user import User
 from app.schemas.user import UserCreateDetail
@@ -15,6 +15,29 @@ class CRUDUser:
     async def get_by_email(self, db: AsyncSession, email: str) -> User | None:
         result = await db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
+
+    async def get_all(
+        self,
+        db: AsyncSession,
+        include_active: bool = True,
+        include_inactive: bool = False,
+    ) -> list[User]:
+        if not include_active and not include_inactive:
+            raise BadRequestError("Select at least one user status")
+
+        statement = select(User)
+
+        if include_active and not include_inactive:
+            statement = statement.where(User.is_active.is_(True))
+
+        elif not include_active and include_inactive:
+            statement = statement.where(User.is_active.is_(False))
+
+        statement = statement.order_by(User.id.asc())
+
+        result = await db.execute(statement)
+
+        return list(result.scalars().all())
 
     async def create(self, db: AsyncSession, user_data: UserCreateDetail) -> User:
         hashed_password = get_password_hash(user_data.password)

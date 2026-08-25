@@ -6,7 +6,7 @@ from app.core.exception import ForbiddenError, NotFoundError
 from app.crud.crud_story import crud_story
 from app.models.story import Story
 from app.models.user import User, UserRole
-from app.schemas.story import StoryCreate, StoryUpdate
+from app.schemas.story import StoryCreate, StoryCreateDetail, StoryUpdate
 
 
 class StoryService:
@@ -17,13 +17,13 @@ class StoryService:
         *,
         current_user: User,
     ) -> Story:
-        return await crud_story.create(
-            db,
-            story_data,
+        story_data_detail = StoryCreateDetail(
+            **story_data.model_dump(),
             author_id=current_user.id,
             created_by=current_user.id,
             updated_by=current_user.id,
         )
+        return await crud_story.create(db, story_data_detail)
 
     async def update_story(
         self,

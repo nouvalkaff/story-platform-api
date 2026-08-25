@@ -17,26 +17,13 @@ from app.db.base import Base
 
 class StoryGenre(str, PyEnum):
     UNSPECIFIED = "unspecified"
-    SLICE_OF_LIFE = "slice-of-life"
     ROMANCE = "romance"
     HORROR = "horror"
     MYSTERY = "mystery"
-    THRILLER = "thriller"
     FANTASY = "fantasy"
     SCI_FI = "sci-fi"
-    COMEDY = "comedy"
-    DRAMA = "drama"
-    HISTORICAL_FICTION = "historical-fiction"
     ADVENTURE = "adventure"
-    FABLE = "fable"
-    PSYCHOLOGICAL_FICTION = "psychological-fiction"
-    SATIRE = "satire"
-    SOCIAL_FICTION = "social-fiction"
-    SPIRITUAL_FICTION = "spiritual-fiction"
-    COMING_OF_AGE = "coming-of-age"
-    SURREAL_FICTION = "surreal-fiction"
-    CHILDREN_FICTION = "children-fiction"
-    DYSTOPIAN_FICTION = "dystopian-fiction"
+    DRAMA = "drama"
 
 
 class Story(Base):
@@ -46,8 +33,8 @@ class Story(Base):
 
     title: Mapped[str] = mapped_column(
         String(100),
+        unique=True,
         nullable=False,
-        index=True,
     )
 
     content: Mapped[str] = mapped_column(

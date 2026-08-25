@@ -1,13 +1,17 @@
 from datetime import datetime
+from enum import Enum as PyEnum
 
 from pydantic import BaseModel, ConfigDict, EmailStr
-
-from app.models.user import UserRole
 
 
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str
+
+
+class UserRole(str, PyEnum):
+    ADMIN = "admin"
+    USER = "user"
 
 
 class UserCreatePayload(UserBase):
@@ -46,3 +50,15 @@ class UserResponse(UserBase):
     role: UserRole
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TokenPayload(BaseModel):
+    sub: int
+    role: UserRole
+    email: str
+    exp: int
+
+
+class UserListResponse(BaseModel):
+    total: int
+    users: list[UserResponse]

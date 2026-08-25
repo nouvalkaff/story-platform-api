@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exception import ConflictError
+from app.core.exception import ConflictError, UnauthorizedError
 from app.core.security import create_access_token, verify_password
 from app.crud.crud_user import crud_user
 from app.models.user import User
@@ -24,6 +24,11 @@ class AuthService:
 
         if not user or not verify_password(credentials.password, user.hashed_password):
             return None
+
+        if not user.is_active:
+            raise UnauthorizedError(
+                "Account suspended. Email support@example.com to restore access."
+            )
 
         return create_access_token(
             data={"sub": str(user.id), "role": user.role, "email": user.email}

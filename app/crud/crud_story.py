@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import Row, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.story import Story, StoryGenre
@@ -22,6 +22,14 @@ class CRUDStory:
     async def get(self, db: AsyncSession, story_id: int) -> Story | None:
         result = await db.execute(select(Story).where(Story.id == story_id))
         return result.scalar_one_or_none()
+
+    async def get_by_title(
+        self, db: AsyncSession, title: str
+    ) -> Row[tuple[int, str]] | None:
+        result = await db.execute(
+            select(Story.id, Story.title).where(Story.title == title)
+        )
+        return result.one_or_none()
 
     async def get_multi(
         self,

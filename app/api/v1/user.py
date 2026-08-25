@@ -2,15 +2,15 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import (
+    authenticate_user,
     decode_token_to_payload,
-    get_authenticated_user,
     oauth2_scheme,
+    validate_admin_access,
     validate_auth,
 )
 from app.core.exception import (
     BadRequestError,
     ConflictError,
-    ForbiddenError,
     NotFoundError,
     UnauthorizedError,
 )
@@ -22,6 +22,7 @@ from app.schemas.common import ApiResponse
 from app.schemas.user import (
     UserCreateDetail,
     UserCreatePayload,
+    UserListResponse,
     UserPasswordUpdate,
     UserResponse,
     UserUpdate,
@@ -47,11 +48,10 @@ async def create(
     if token:
         payload = decode_token_to_payload(token, is_raw_token=True)
 
-        if payload["role"] != UserRole.ADMIN:
-            raise ForbiddenError()
+        validate_admin_access(payload)
 
-        new_user.created_by = payload["sub"]
-        new_user.updated_by = payload["sub"]
+        new_user.created_by = payload.sub
+        new_user.updated_by = payload.sub
 
     user = await auth_service.register(db, new_user)
 
@@ -73,13 +73,37 @@ async def get_my_data(
     request: Request,
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    current_user = await get_authenticated_user(request, db)
+    current_user = await authenticate_user(request, db)
 
     return {
         "status_code": status.HTTP_200_OK,
         "status": True,
         "message": "Success",
         "data": current_user,
+    }
+
+
+@router.get(
+    "/all",
+    response_model=ApiResponse[UserListResponse],
+    description="Get all users data [ADMIN-only]",
+    dependencies=[Depends(validate_auth)],
+)
+async def get_all_users(
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    include_active: bool = True,
+    include_inactive: bool = False,
+):
+    await authenticate_user(request, db, is_check_admin=True)
+
+    users = await crud_user.get_all(db, include_active, include_inactive)
+
+    return {
+        "status_code": status.HTTP_200_OK,
+        "status": True,
+        "message": "Success",
+        "data": {"total": len(users), "users": users},
     }
 
 
@@ -100,10 +124,12 @@ async def update(
     if user_db is None:
         raise NotFoundError()
 
-    current_user = await get_authenticated_user(request, db)
-
-    if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
-        raise ForbiddenError()
+    current_user = await authenticate_user(
+        request,
+        db,
+        is_check_admin=True,
+        is_validate_access=True,
+    )
 
     if update_data.email is not None:
         is_email_exist = await crud_user.get_by_email(db, update_data.email)
@@ -143,20 +169,24 @@ async def update_password(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     old_pass = update_data.old_password
+
     new_pass = update_data.new_password
+
     user_db = await crud_user.get(db, user_id)
 
     if user_db is None:
         raise NotFoundError()
 
-    current_user = await get_authenticated_user(request, db)
+    current_user = await authenticate_user(
+        request,
+        db,
+        is_check_admin=True,
+        is_validate_access=True,
+    )
 
     if current_user.role != UserRole.ADMIN:
         if not old_pass:
             raise BadRequestError("old_password cannot be empty")
-
-        if current_user.id != user_db.id:
-            raise ForbiddenError()
 
         if not verify_password(old_pass, user_db.hashed_password):
             raise UnauthorizedError("Incorrect old password")
@@ -191,10 +221,12 @@ async def soft_delete(
     if user_db is None:
         raise NotFoundError()
 
-    current_user = await get_authenticated_user(request, db)
-
-    if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
-        raise ForbiddenError()
+    current_user = await authenticate_user(
+        request,
+        db,
+        is_check_admin=True,
+        is_validate_access=True,
+    )
 
     user_db.is_active = False
 
@@ -227,10 +259,12 @@ async def hard_delete(
     if user_db is None:
         raise NotFoundError()
 
-    current_user = await get_authenticated_user(request, db)
-
-    if current_user.role != UserRole.ADMIN and current_user.id != user_db.id:
-        raise ForbiddenError()
+    await authenticate_user(
+        request,
+        db,
+        is_check_admin=True,
+        is_validate_access=True,
+    )
 
     await crud_user.delete(db, user_db)
 
