@@ -1,217 +1,162 @@
 # Story Platform API
 
-Asynchronous REST API for user accounts and short stories. The service is built with FastAPI, uses PostgreSQL through SQLAlchemy 2.0, and protects authenticated resources with JWT bearer tokens.
+An asynchronous REST API for publishing short stories and managing their authors.
+
+[![Build status](https://img.shields.io/badge/build-not%20configured-lightgrey)](https://github.com/nouvalkaff/story-platform-api/actions)
+[![License: MIT](https://img.shields.io/github/license/nouvalkaff/story-platform-api)](LICENSE)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
+
+## Overview
+
+Story Platform API provides account, authentication, and short-story workflows for clients that need a JSON-based publishing backend. It supports public discovery of published stories, authenticated author operations, and role-aware user administration. The application exposes versioned FastAPI routes backed by asynchronous SQLAlchemy sessions and PostgreSQL.
+
+## Tech Stack
+
+| Component | Version | Purpose |
+| --- | --- | --- |
+| Python | `>=3.13` | Application runtime |
+| FastAPI | `>=0.141.1` | REST API and OpenAPI generation |
+| PostgreSQL | Not pinned | Relational data store |
+| SQLAlchemy | `>=2.0.52` | Async ORM and database access |
+| asyncpg | `>=0.31.0` | Async PostgreSQL driver |
+| Pydantic Settings | `>=2.15.0` | Validation and environment configuration |
+| Alembic | `>=1.19.1` | Database migrations |
+| python-jose | `>=3.5.0` | JWT encoding and validation |
+| Passlib / bcrypt | `>=1.7.4` / `>=4.0.1,<4.1` | Password hashing |
+| uv | Lockfile format `1`, revision `3` | Dependency and virtual-environment management |
 
 ## Features
 
-- JWT authentication with active-user and token consistency checks.
-- User registration, profile updates, password changes, and account deletion.
-- Admin-only user listing and administrative account operations.
-- Story creation with `DRAFT` and `PUBLISHED` statuses.
-- Authenticated story detail and per-user story listing endpoints.
-- Authenticated published-story listing with pagination and optional title search.
-- Consistent response envelopes for user and story endpoints.
-- Alembic migrations, including the migration from `is_published` to `status`.
+- Authenticate users with expiring JWT bearer tokens.
+- Register and manage user profiles, passwords, and account lifecycle.
+- Enforce owner and administrator permissions on protected resources.
+- Create, update, retrieve, and delete short stories.
+- Publish or return stories to draft while tracking publication timestamps.
+- Browse paginated published stories and search titles case-insensitively.
+- Validate genres, content length, unique titles, and up to 10 normalized tags.
+- Evolve the PostgreSQL schema through versioned Alembic migrations.
 
-## Technology
+## Prerequisites
 
-- Python 3.13+
-- FastAPI
-- PostgreSQL
-- SQLAlchemy 2.0 with `asyncpg`
-- Pydantic V2 and pydantic-settings
-- Alembic
-- JWT via `python-jose`
-- Password hashing via Passlib and bcrypt
-- `uv` for dependency management
+- Python `3.13` or later; the repository pins the development runtime to `3.13`.
+- [uv](https://docs.astral.sh/uv/) `0.12.5` or a compatible release.
+- A reachable PostgreSQL server; this project does not declare a required server version.
 
-## Requirements
+## Getting Started
 
-- Python 3.13 or newer
-- PostgreSQL
-- [uv](https://docs.astral.sh/uv/)
+1. Clone the repository.
 
-## Installation
+   ```bash
+   git clone https://github.com/nouvalkaff/story-platform-api.git
+   cd story-platform-api
+   ```
 
-```bash
-git clone https://github.com/nouvalkaff/story-platform-api.git
-cd story-platform-api
-uv sync
-```
+2. Install the locked dependencies.
 
-## Configuration
+   ```bash
+   uv sync --frozen
+   ```
 
-Create a `.env` file in the project root:
+3. Create the default database, or use an existing PostgreSQL database and adjust `DATABASE_URL` in the next step.
 
-```env
-ENVIRONMENT=development
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/story_platform
-SECRET_KEY=replace-with-a-long-random-secret
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-```
+   ```sql
+   CREATE DATABASE story_platform;
+   ```
 
-`ENVIRONMENT` is required and must be `development` or `production`. `SECRET_KEY` is required. `DATABASE_URL` defaults to the PostgreSQL URL shown above; `ALGORITHM` defaults to `HS256`; and `ACCESS_TOKEN_EXPIRE_MINUTES` defaults to `60`.
+4. Create `.env` in the repository root.
 
-SQLAlchemy query logging is enabled automatically in the `development` environment.
+   ```dotenv
+   ENVIRONMENT=development
+   DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/story_platform
+   SECRET_KEY=dev-only-secret-key-32-characters
+   ALGORITHM=HS256
+   ACCESS_TOKEN_EXPIRE_MINUTES=60
+   ```
 
-## Database and local run
+5. Apply the database migrations.
 
-Apply all migrations before starting the API:
+   ```bash
+   uv run alembic upgrade head
+   ```
 
-```bash
-uv run alembic upgrade head
-```
+6. Start the development server.
 
-Start the development server:
+   ```bash
+   uv run fastapi dev app/main.py
+   ```
 
-```bash
-uv run fastapi dev app/main.py
-```
+The API is available at `http://127.0.0.1:8000`. Interactive OpenAPI documentation is served at `http://127.0.0.1:8000/docs`, with ReDoc at `http://127.0.0.1:8000/redoc`.
 
-The API is available at `http://127.0.0.1:8000`.
+## Environment Variables
 
-- OpenAPI UI: `http://127.0.0.1:8000/docs`
-- ReDoc: `http://127.0.0.1:8000/redoc`
-- Health check: `GET /health`
-
-## Authentication
-
-Log in with:
-
-```http
-POST /api/v1/auth/login
-Content-Type: application/json
-```
-
-```json
-{
-  "email": "user@example.com",
-  "password": "your-password"
-}
-```
-
-The response contains an access token. Send it to protected endpoints using:
-
-```http
-Authorization: Bearer <access_token>
-```
-
-The API validates the JWT and, where the endpoint loads the current user, verifies that the account still exists and is active.
-
-## Response format
-
-User and story endpoints return this envelope:
-
-```json
-{
-  "status_code": 200,
-  "status": true,
-  "message": "Success",
-  "data": {}
-}
-```
-
-The login endpoint returns the token fields directly (`access_token` and `token_type`) together with `status_code` and `status`.
-
-## API endpoints
-
-The versioned API prefix is `/api/v1`.
-
-### System and authentication
-
-| Method | Endpoint | Access | Description |
+| Variable | Required | Description | Example |
 | --- | --- | --- | --- |
-| `GET` | `/` | Public | API welcome response |
-| `GET` | `/health` | Public | Health check |
-| `POST` | `/api/v1/auth/login` | Public | Authenticate and issue a JWT access token |
+| `ENVIRONMENT` | Yes | Runtime mode. Accepted values are `development` and `production`; development mode enables SQL query logging. | `development` |
+| `DATABASE_URL` | No | SQLAlchemy async PostgreSQL connection URL. | `postgresql+asyncpg://postgres:postgres@localhost:5432/story_platform` |
+| `SECRET_KEY` | Yes | Secret used to sign and validate JWT access tokens. Use a strong random value outside local development. | `dev-only-secret-key-32-characters` |
+| `ALGORITHM` | No | JWT signing algorithm. | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | Access-token lifetime in minutes. | `60` |
 
-### Users
+## API Reference
 
-| Method | Endpoint | Access | Description |
+All versioned endpoints use the `/api/v1` prefix. Protected endpoints require an `Authorization` header using the `Bearer` scheme.
+
+| Method | Endpoint | Auth | Description |
 | --- | --- | --- | --- |
-| `POST` | `/api/v1/users/create` | Public or admin-authenticated | Create a user; an optional bearer token must belong to an admin |
-| `GET` | `/api/v1/users/me` | Authenticated | Return the current user's profile |
-| `GET` | `/api/v1/users/all` | Admin | List active and/or inactive users using `include_active` and `include_inactive` |
-| `PATCH` | `/api/v1/users/{user_id}` | Owner or admin | Update email and full name |
-| `PATCH` | `/api/v1/users/change-password/{user_id}` | Owner or admin | Change a user's password |
-| `DELETE` | `/api/v1/users/sdelete/{user_id}` | Owner or admin | Deactivate a user account |
-| `DELETE` | `/api/v1/users/hdelete/{user_id}` | Owner or admin | Permanently delete a user; use `is_agree=true` when the user owns stories |
+| `GET` | `/` | Public | Return the API welcome response. |
+| `GET` | `/health` | Public | Return service health status. |
+| `POST` | `/api/v1/auth/login` | Public | Authenticate an email and password and issue a JWT. |
+| `POST` | `/api/v1/users/create` | Optional bearer; admin if supplied | Create a user account. |
+| `GET` | `/api/v1/users/me` | Bearer | Return the current user's profile. |
+| `GET` | `/api/v1/users/all` | Admin | List active and/or inactive users. |
+| `PATCH` | `/api/v1/users/{user_id}` | Owner or admin | Update a user's email or full name; admins cannot change another user's email. |
+| `PATCH` | `/api/v1/users/change-password/{user_id}` | Owner | Change the account password after verifying the old password. |
+| `DELETE` | `/api/v1/users/sdelete/{user_id}` | Owner or admin | Deactivate a user account. |
+| `DELETE` | `/api/v1/users/hdelete/{user_id}` | Owner | Permanently delete an account; `is_agree=true` confirms deletion when stories exist. |
+| `POST` | `/api/v1/story/add` | Bearer | Create a draft story for the current user. |
+| `GET` | `/api/v1/story/user/{user_id}` | Bearer | List a user's stories with `page` and `page_limit`; non-owners see published stories only. |
+| `GET` | `/api/v1/story/published` | Public | List published stories with `page`, `size`, and optional title query `q`. |
+| `PATCH` | `/api/v1/story/{story_id}/status` | Owner or admin | Set a story's status to `draft` or `published`. |
+| `PATCH` | `/api/v1/story/{story_id}` | Owner or admin | Update one or more editable story fields. |
+| `DELETE` | `/api/v1/story/{story_id}` | Owner | Permanently delete a story. |
+| `GET` | `/api/v1/story/{story_id}` | Public | Return a published story; draft content is not exposed. |
 
-### Stories
-
-| Method | Endpoint | Access | Description |
-| --- | --- | --- | --- |
-| `POST` | `/api/v1/story/add` | Authenticated | Create a story for the current user; new stories default to `draft` |
-| `GET` | `/api/v1/story/{story_id}` | Authenticated | Get a story; drafts are available to their author, while other users can only view published stories |
-| `GET` | `/api/v1/story/user/{user_id}` | Authenticated | List a user's stories with `page` and `page_limit`; authors can see drafts, other users see published stories only |
-| `GET` | `/api/v1/story/published` | Authenticated | List published stories with pagination and optional title search |
-
-#### Published stories
-
-Request parameters:
-
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `page` | `1` | Page number; must be at least `1` |
-| `size` | `5` | Number of stories per page; must be at least `1` |
-| `q` | omitted | Optional case-insensitive search term matched against the story title |
-
-An omitted, empty, or whitespace-only `q` returns all published stories without a search filter.
-
-Example:
-
-```bash
-curl --location "http://127.0.0.1:8000/api/v1/story/published?page=1&size=5&q=mystery" \
-  --header "Authorization: Bearer <access_token>"
-```
-
-The response data contains `total`, `page`, `size`, and `stories`.
-
-## Story status
-
-Stories use the `StoryStatus` enum:
+## Project Structure
 
 ```text
-draft
-published
+story-platform-api/
+├── alembic/
+│   ├── versions/          # Ordered database migration revisions
+│   ├── env.py             # Async migration environment
+│   └── script.py.mako     # Migration template
+├── app/
+│   ├── api/
+│   │   ├── v1/            # Authentication, user, and story routes
+│   │   └── deps.py        # JWT and authorization dependencies
+│   ├── core/              # Settings, security, logging, and error handling
+│   ├── crud/              # SQLAlchemy persistence operations
+│   ├── db/                # Declarative base and async sessions
+│   ├── models/            # User and story ORM models
+│   ├── schemas/           # Pydantic request and response models
+│   ├── services/          # Authentication and story business logic
+│   ├── utils/             # Formatting and pagination helpers
+│   └── main.py            # FastAPI application entry point
+├── tests/                 # Test module stubs
+├── alembic.ini            # Alembic configuration
+├── pyproject.toml         # Project metadata and dependencies
+├── uv.lock                # Reproducible dependency lockfile
+└── LICENSE                # MIT license text
 ```
 
-Publishing sets `status` to `published` and records `published_at`. Returning a story to draft sets `status` to `draft` and clears `published_at`.
+## Contributing
 
-## Database migrations
-
-Migration files are stored in `alembic/versions`. The migration `1407aa9efb66_replace_is_published_with_story_status.py` converts legacy boolean values as follows:
-
-- `is_published = false` → `status = draft`
-- `is_published = true` → `status = published`
-
-Run `uv run alembic upgrade head` or `alembic upgrade head` after configuring the database.
-
-## Tests
-
-Run the test suite with the standard library test runner:
+Create branches from `main` using the `type/short-description` pattern—for example, `feat/add-story-filter`. Use `feat`, `fix`, `docs`, `refactor`, `test`, or `chore` as the type. Keep changes focused, add an Alembic revision for schema changes, and verify the application imports successfully:
 
 ```bash
-uv run python -m unittest discover -s tests -p "test_*.py"
+uv run python -m compileall app
 ```
 
-## Project structure
-
-```text
-app/
-├── api/          # FastAPI routers and authentication dependencies
-├── core/         # Settings, security, logging, and exception handling
-├── crud/         # Database queries and persistence operations
-├── db/           # SQLAlchemy base and async session
-├── models/       # SQLAlchemy ORM models and enums
-├── schemas/      # Pydantic request and response schemas
-├── services/     # Application and business logic
-├── utils/        # Shared helpers such as pagination
-└── main.py       # FastAPI application entry point
-alembic/          # Database migration configuration and revisions
-tests/            # Automated tests
-```
+Push the branch to your fork and open a pull request against `main`. Describe the behavior change, document any API or migration impact, and request review before merging.
 
 ## License
 
