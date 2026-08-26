@@ -104,9 +104,8 @@ async def get_stories_by_user_id(
 
 @router.get(
     "/published",
-    description="Get published stories with optional search",
+    description="Publicly list published stories with optional search",
     response_model=ApiResponse[PublishedStoryPagedResponse],
-    dependencies=[Depends(validate_auth)],
 )
 async def get_published_stories(
     page: int = Query(default=1, ge=1),
@@ -222,22 +221,18 @@ async def delete_story(
 
 @router.get(
     "/{story_id}",
-    description="Get a story by ID",
+    description="Publicly get a published story by ID",
     response_model=ApiResponse[StoryResponse | None],
-    dependencies=[Depends(validate_auth)],
 )
 async def get_story(
-    request: Request,
     story_id: int,
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    user = await authenticate_user(request, db)
-
     story = await story_service.get_story_by_id(db, story_id)
 
     message = "Success"
 
-    if story.status != StoryStatus.PUBLISHED and story.author_id != user.id:
+    if story.status != StoryStatus.PUBLISHED:
         message = "Story is unavailable for public access."
         story = None
 
