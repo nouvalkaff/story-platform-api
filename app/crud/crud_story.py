@@ -29,6 +29,24 @@ class CRUDStory:
         result = await db.execute(select(Story).where(Story.id == story_id))
         return result.scalar_one_or_none()
 
+    async def get_stories_by_user_id(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        *,
+        is_published: bool | None = None,
+    ) -> list[Story]:
+        statement = select(Story).where(Story.author_id == user_id)
+
+        if is_published is not None:
+            statement = statement.where(Story.is_published == is_published)
+
+        statement = statement.order_by(Story.created_at.desc())
+
+        result = await db.execute(statement)
+
+        return list(result.scalars().all())
+
     async def count_by_author(self, db: AsyncSession, author_id: int) -> int:
         statement = (
             select(func.count()).select_from(Story).where(Story.author_id == author_id)

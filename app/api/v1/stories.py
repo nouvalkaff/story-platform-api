@@ -6,7 +6,12 @@ from app.core.exception import ConflictError
 from app.crud.crud_story import crud_story
 from app.db.session import get_db
 from app.schemas.common import ApiResponse
-from app.schemas.story import StoryCreate, StoryCreateDetail, StoryResponse
+from app.schemas.story import (
+    StoryCreate,
+    StoryCreateDetail,
+    StoryListResponse,
+    StoryResponse,
+)
 from app.services.story_service import story_service
 
 router = APIRouter(prefix="/story", tags=["Story"])
@@ -75,4 +80,33 @@ async def get_story(
         "status": True,
         "message": message,
         "data": story,
+    }
+
+
+@router.get(
+    "/user/{user_id}",
+    description="Get stories by user ID",
+    response_model=ApiResponse[list[StoryListResponse]],
+)
+async def get_stories_by_user_id(
+    request: Request,
+    user_id: int,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    user = await authenticate_user(request, db)
+
+    stories = await story_service.get_stories_by_user_id(db, user_id, user)
+
+    if stories:
+        message = "Success"
+    elif user.id == user_id:
+        message = "You have no stories yet."
+    else:
+        message = "This user has no published stories."
+
+    return {
+        "status_code": status.HTTP_200_OK,
+        "status": True,
+        "message": message,
+        "data": stories,
     }

@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exception import ForbiddenError, NotFoundError
 from app.crud.crud_story import crud_story
+from app.crud.crud_user import crud_user
 from app.models.story import Story
 from app.models.user import User, UserRole
 from app.schemas.story import StoryCreate, StoryCreateDetail, StoryUpdate
@@ -36,6 +37,43 @@ class StoryService:
             raise NotFoundError("Story not found")
 
         return story
+
+    @staticmethod
+    def _truncate_content(content: str, limit_len: int):
+        return (
+            f"{content[:limit_len].strip()}...[READ_MORE]"
+            if len(content) > limit_len
+            else content
+        )
+
+    async def get_stories_by_user_id(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        current_user: User,
+    ) -> list[Story]:
+        user = await crud_user.get(db, user_id)
+
+        if user is None:
+            raise NotFoundError("User not found")
+
+        is_published = None if current_user.id == user_id else True
+
+        stories = await crud_story.get_stories_by_user_id(
+            db, user_id, is_published=is_published
+        )
+
+        result = []
+        for each in stories:
+            story_dict = {c.name: getattr(each, c.name) for c in each.__table__.columns}
+
+            story_dict["author"] = current_user.full_name
+
+            story_dict["content"] = self._truncate_content(story_dict["content"], 100)
+
+            result.append(story_dict)
+
+        return result
 
     async def update_story(
         self,
