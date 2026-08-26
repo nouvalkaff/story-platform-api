@@ -101,6 +101,8 @@ The API is available at `http://127.0.0.1:8000`. Interactive OpenAPI documentati
 
 All versioned endpoints use the `/api/v1` prefix. Protected endpoints require an `Authorization` header using the `Bearer` scheme.
 
+For ready-to-run requests and examples, see the [Postman Documentation](https://documenter.getpostman.com/view/23758510/2sBYAuQqFF).
+
 | Method | Endpoint | Auth | Description |
 | --- | --- | --- | --- |
 | `GET` | `/` | Public | Return the API welcome response. |
