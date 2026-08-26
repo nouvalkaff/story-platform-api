@@ -106,7 +106,7 @@ async def get_stories_by_user_id(
 async def get_published_stories(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=5, ge=1),
-    q: str | None = Query(default=None, min_length=1),
+    q: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     stories, total = await story_service.get_published_stories(
