@@ -20,6 +20,8 @@ class StoryStatusTests(TestCase):
                 "id": 1,
                 "title": "Draft story",
                 "content": "Content",
+                "synopsis": "A short synopsis",
+                "tags": "draft",
                 "status": StoryStatus.DRAFT,
                 "author_id": 1,
                 "published_at": None,

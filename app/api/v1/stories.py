@@ -13,6 +13,8 @@ from app.schemas.story import (
     StoryCreateDetail,
     StoryListPagedResponse,
     StoryResponse,
+    StoryStatusResponse,
+    StoryStatusUpdate,
 )
 from app.services.story_service import story_service
 
@@ -123,6 +125,41 @@ async def get_published_stories(
         "status": True,
         "message": "Success" if stories else "No published stories found",
         "data": {"total": total, "page": page, "size": size, "stories": stories},
+    }
+
+
+@router.patch(
+    "/{story_id}/status",
+    description="Update a story status",
+    response_model=ApiResponse[StoryStatusResponse],
+    dependencies=[Depends(validate_auth)],
+)
+async def update_story_status(
+    request: Request,
+    story_id: int,
+    status_data: StoryStatusUpdate,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    current_user = await authenticate_user(request, db)
+
+    story = await story_service.update_story_status(
+        db,
+        story_id,
+        status_data.status,
+        current_user=current_user,
+    )
+
+    message = (
+        "Story published successfully"
+        if status_data.status == StoryStatus.PUBLISHED
+        else "Story moved to draft successfully"
+    )
+
+    return {
+        "status_code": status.HTTP_200_OK,
+        "status": True,
+        "message": message,
+        "data": story,
     }
 
 

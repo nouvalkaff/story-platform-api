@@ -137,6 +137,26 @@ class StoryService:
         story = await self._get_editable_story(db, story_id, current_user)
         await crud_story.delete(db, story)
 
+    async def update_story_status(
+        self,
+        db: AsyncSession,
+        story_id: int,
+        status: StoryStatus,
+        *,
+        current_user: User,
+    ) -> Story:
+        story = await self._get_editable_story(db, story_id, current_user)
+
+        published_at = datetime.now(UTC) if status == StoryStatus.PUBLISHED else None
+
+        return await crud_story.set_publication(
+            db,
+            story,
+            status=status,
+            published_at=published_at,
+            updated_by=current_user.id,
+        )
+
     async def publish_story(
         self,
         db: AsyncSession,
@@ -144,13 +164,11 @@ class StoryService:
         *,
         current_user: User,
     ) -> Story:
-        story = await self._get_editable_story(db, story_id, current_user)
-        return await crud_story.set_publication(
+        return await self.update_story_status(
             db,
-            story,
-            status=StoryStatus.PUBLISHED,
-            published_at=datetime.now(UTC),
-            updated_by=current_user.id,
+            story_id,
+            StoryStatus.PUBLISHED,
+            current_user=current_user,
         )
 
     async def unpublish_story(
@@ -160,24 +178,24 @@ class StoryService:
         *,
         current_user: User,
     ) -> Story:
-        story = await self._get_editable_story(db, story_id, current_user)
-        return await crud_story.set_publication(
+        return await self.update_story_status(
             db,
-            story,
-            status=StoryStatus.DRAFT,
-            published_at=None,
-            updated_by=current_user.id,
+            story_id,
+            StoryStatus.DRAFT,
+            current_user=current_user,
         )
 
     async def _get_editable_story(
         self, db: AsyncSession, story_id: int, current_user: User
     ) -> Story:
         story = await crud_story.get(db, story_id)
+
         if story is None:
             raise NotFoundError("Story not found")
 
         if current_user.role != UserRole.ADMIN and story.author_id != current_user.id:
             raise ForbiddenError()
+
         return story
 
 

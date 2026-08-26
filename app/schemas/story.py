@@ -29,6 +29,19 @@ class StoryUpdate(BaseModel):
     genre: StoryGenre | None = None
 
 
+class StoryStatusUpdate(BaseModel):
+    status: StoryStatus
+
+
+class StoryStatusResponse(BaseModel):
+    id: int
+    title: str
+    status: StoryStatus
+    published_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class StoryResponse(StoryBase):
     id: int
     status: StoryStatus
