@@ -9,6 +9,7 @@ from app.crud.crud_user import crud_user
 from app.models.story import Story, StoryStatus
 from app.models.user import User, UserRole
 from app.schemas.story import StoryCreate, StoryCreateDetail, StoryUpdate
+from app.utils.pagination import get_pagination_offset
 
 
 class StoryService:
@@ -83,6 +84,27 @@ class StoryService:
             result.append(story_dict)
 
         return result, total
+
+    async def get_published_stories(
+        self,
+        db: AsyncSession,
+        *,
+        page: int,
+        size: int,
+        q: str | None = None,
+    ) -> tuple[list[Story], int]:
+        search_query = q.strip() if q is not None else None
+
+        search_query = search_query or None
+
+        skip = get_pagination_offset(page, size)
+
+        return await crud_story.get_published_stories(
+            db,
+            skip=skip,
+            limit=size,
+            q=search_query,
+        )
 
     async def update_story(
         self,

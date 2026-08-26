@@ -59,6 +59,34 @@ class CRUDStory:
 
         return list(result.scalars().all()), total
 
+    async def get_published_stories(
+        self,
+        db: AsyncSession,
+        *,
+        skip: int,
+        limit: int,
+        q: str | None = None,
+    ) -> tuple[list[Story], int]:
+        statement = select(Story).where(Story.status == StoryStatus.PUBLISHED)
+
+        if q is not None:
+            search_term = f"%{q}%"
+            statement = statement.where(Story.title.ilike(search_term))
+
+        count_statement = select(func.count()).select_from(statement.subquery())
+
+        total_result = await db.execute(count_statement)
+
+        total = total_result.scalar_one()
+
+        statement = statement.order_by(Story.published_at.desc(), Story.id.desc())
+
+        statement = statement.offset(skip).limit(limit)
+
+        result = await db.execute(statement)
+
+        return list(result.scalars().all()), total
+
     async def count_by_author(self, db: AsyncSession, author_id: int) -> int:
         statement = (
             select(func.count()).select_from(Story).where(Story.author_id == author_id)

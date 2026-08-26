@@ -51,3 +51,10 @@ class StoryListResponse(StoryBase):
 class StoryListPagedResponse(BaseModel):
     total: int
     stories: list[StoryListResponse]
+
+
+class PublishedStoryPagedResponse(BaseModel):
+    total: int
+    page: int
+    size: int
+    stories: list[StoryListResponse]

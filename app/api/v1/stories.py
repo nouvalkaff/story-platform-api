@@ -8,6 +8,7 @@ from app.db.session import get_db
 from app.models.story import StoryStatus
 from app.schemas.common import ApiResponse
 from app.schemas.story import (
+    PublishedStoryPagedResponse,
     StoryCreate,
     StoryCreateDetail,
     StoryListPagedResponse,
@@ -57,37 +58,10 @@ async def add(
 
 
 @router.get(
-    "/{story_id}",
-    description="Get a story by ID",
-    response_model=ApiResponse[StoryResponse | None],
-)
-async def get_story(
-    request: Request,
-    story_id: int,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
-):
-    user = await authenticate_user(request, db)
-
-    story = await story_service.get_story_by_id(db, story_id)
-
-    message = "Success"
-
-    if story.status != StoryStatus.PUBLISHED and story.author_id != user.id:
-        message = "Story is unavailable for public access."
-        story = None
-
-    return {
-        "status_code": status.HTTP_200_OK,
-        "status": True,
-        "message": message,
-        "data": story,
-    }
-
-
-@router.get(
     "/user/{user_id}",
     description="Get stories by user ID",
     response_model=ApiResponse[StoryListPagedResponse],
+    dependencies=[Depends(validate_auth)],
 )
 async def get_stories_by_user_id(
     request: Request,
@@ -120,4 +94,60 @@ async def get_stories_by_user_id(
         "status": True,
         "message": message,
         "data": result,
+    }
+
+
+@router.get(
+    "/published",
+    description="Get published stories with optional search",
+    response_model=ApiResponse[PublishedStoryPagedResponse],
+    dependencies=[Depends(validate_auth)],
+)
+async def get_published_stories(
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=5, ge=1),
+    q: str | None = Query(default=None, min_length=1),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    stories, total = await story_service.get_published_stories(
+        db,
+        page=page,
+        size=size,
+        q=q,
+    )
+
+    return {
+        "status_code": status.HTTP_200_OK,
+        "status": True,
+        "message": "Success" if stories else "No published stories found",
+        "data": {"total": total, "page": page, "size": size, "stories": stories},
+    }
+
+
+@router.get(
+    "/{story_id}",
+    description="Get a story by ID",
+    response_model=ApiResponse[StoryResponse | None],
+    dependencies=[Depends(validate_auth)],
+)
+async def get_story(
+    request: Request,
+    story_id: int,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    user = await authenticate_user(request, db)
+
+    story = await story_service.get_story_by_id(db, story_id)
+
+    message = "Success"
+
+    if story.status != StoryStatus.PUBLISHED and story.author_id != user.id:
+        message = "Story is unavailable for public access."
+        story = None
+
+    return {
+        "status_code": status.HTTP_200_OK,
+        "status": True,
+        "message": message,
+        "data": story,
     }

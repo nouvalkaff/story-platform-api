@@ -35,6 +35,9 @@ class StoryStatusTests(TestCase):
     def test_publish_and_unpublish_set_expected_status_and_timestamp(self) -> None:
         asyncio.run(self._assert_publication_transitions())
 
+    def test_published_story_search_uses_page_and_size(self) -> None:
+        asyncio.run(self._assert_published_story_search())
+
     async def _assert_publication_transitions(self) -> None:
         service = StoryService()
         story = SimpleNamespace()
@@ -64,3 +67,25 @@ class StoryStatusTests(TestCase):
             unpublish_kwargs = set_publication.await_args.kwargs
             self.assertEqual(unpublish_kwargs["status"], StoryStatus.DRAFT)
             self.assertIsNone(unpublish_kwargs["published_at"])
+
+    async def _assert_published_story_search(self) -> None:
+        service = StoryService()
+        db = cast(AsyncSession, object())
+
+        with patch(
+            "app.services.story_service.crud_story.get_published_stories",
+            new=AsyncMock(return_value=([], 0)),
+        ) as get_published_stories:
+            stories, total = await service.get_published_stories(
+                db,
+                page=3,
+                size=5,
+                q="  mystery  ",
+            )
+
+        self.assertEqual(stories, [])
+        self.assertEqual(total, 0)
+        self.assertEqual(
+            get_published_stories.await_args.kwargs,
+            {"skip": 10, "limit": 5, "q": "mystery"},
+        )
