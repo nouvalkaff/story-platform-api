@@ -33,6 +33,8 @@ async def add(
 ):
     user = await authenticate_user(request, db)
 
+    story_service.validate_tag_limit(new_story_payload.tags)
+
     new_story_detail = StoryCreateDetail(
         **new_story_payload.model_dump(),
         author_id=user.id,
@@ -52,7 +54,7 @@ async def add(
     return {
         "status_code": status.HTTP_201_CREATED,
         "status": True,
-        "message": "User created successfully",
+        "message": "Story created successfully",
         "data": new_story,
     }
 

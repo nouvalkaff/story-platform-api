@@ -186,7 +186,7 @@ Migration files are stored in `alembic/versions`. The migration `1407aa9efb66_re
 - `is_published = false` → `status = draft`
 - `is_published = true` → `status = published`
 
-Run `uv run alembic upgrade head` after configuring the database.
+Run `uv run alembic upgrade head` or `alembic upgrade head` after configuring the database.
 
 ## Tests
 

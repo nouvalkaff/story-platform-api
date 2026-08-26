@@ -46,6 +46,11 @@ class Story(Base):
         nullable=False,
     )
 
+    synopsis: Mapped[str] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
     genre: Mapped[StoryGenre] = mapped_column(
         Enum(
             StoryGenre,
@@ -53,6 +58,11 @@ class Story(Base):
         ),
         default=StoryGenre.UNSPECIFIED,
         nullable=False,
+    )
+
+    tags: Mapped[str] = mapped_column(
+        String(200),
+        nullable=True,
     )
 
     status: Mapped[StoryStatus] = mapped_column(

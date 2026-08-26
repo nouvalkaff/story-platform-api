@@ -1,14 +1,16 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.story import StoryGenre, StoryStatus
 
 
 class StoryBase(BaseModel):
     title: str
-    content: str
+    content: str = Field(min_length=1, max_length=20_000)
+    synopsis: str = Field(max_length=500)
     genre: StoryGenre = StoryGenre.UNSPECIFIED
+    tags: str = Field(max_length=200)
 
 
 class StoryCreate(StoryBase):

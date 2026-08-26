@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Final
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exception import ForbiddenError, NotFoundError
+from app.core.exception import BadRequestError, ForbiddenError, NotFoundError
 from app.crud.crud_story import crud_story
 from app.crud.crud_user import crud_user
 from app.models.story import Story, StoryStatus
@@ -13,6 +13,8 @@ from app.utils.pagination import get_pagination_offset
 
 
 class StoryService:
+    MAX_TAGS: Final[int] = 10
+
     async def create_story(
         self,
         db: AsyncSession,
@@ -47,6 +49,12 @@ class StoryService:
             if len(content) > limit_len
             else content
         )
+
+    def validate_tag_limit(self, tags: str) -> None:
+        tag_list = [tag.strip() for tag in tags.split(";") if tag.strip()]
+
+        if len(tag_list) > self.MAX_TAGS:
+            raise BadRequestError(f"Maximum {self.MAX_TAGS} tags allowed")
 
     async def get_stories_by_user_id(
         self,
