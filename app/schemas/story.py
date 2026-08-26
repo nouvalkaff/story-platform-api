@@ -8,9 +8,9 @@ from app.models.story import StoryGenre, StoryStatus
 class StoryBase(BaseModel):
     title: str
     content: str = Field(min_length=1, max_length=20_000)
-    synopsis: str = Field(max_length=500)
+    synopsis: str | None = Field(default=None, max_length=500)
     genre: StoryGenre = StoryGenre.UNSPECIFIED
-    tags: str = Field(max_length=200)
+    tags: str | None = Field(default=None, max_length=200)
 
 
 class StoryCreate(StoryBase):
@@ -55,10 +55,15 @@ class StoryResponse(StoryBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class StoryListResponse(StoryBase):
+class AllStoryListResponse(StoryBase):
     status: StoryStatus
-    author: str | None = None
     published_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StoryListResponse(AllStoryListResponse):
+    author: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -72,4 +77,4 @@ class PublishedStoryPagedResponse(BaseModel):
     total: int
     page: int
     size: int
-    stories: list[StoryListResponse]
+    stories: list[AllStoryListResponse]

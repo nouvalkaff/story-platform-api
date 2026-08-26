@@ -50,7 +50,10 @@ class StoryService:
             else content
         )
 
-    def validate_tag_limit(self, tags: str) -> None:
+    def validate_tag_limit(self, tags: str | None) -> None:
+        if tags is None:
+            return
+
         tag_list = [tag.strip() for tag in tags.split(";") if tag.strip()]
 
         if len(tag_list) > self.MAX_TAGS:
@@ -100,19 +103,30 @@ class StoryService:
         page: int,
         size: int,
         q: str | None = None,
-    ) -> tuple[list[Story], int]:
+    ) -> tuple[list[dict[str, Any]], int]:
         search_query = q.strip() if q is not None else None
 
         search_query = search_query or None
 
         skip = get_pagination_offset(page, size)
 
-        return await crud_story.get_published_stories(
+        stories, total = await crud_story.get_published_stories(
             db,
             skip=skip,
             limit=size,
             q=search_query,
         )
+
+        result: list[dict[str, Any]] = []
+
+        for each in stories:
+            story_dict = {c.name: getattr(each, c.name) for c in each.__table__.columns}
+
+            story_dict["content"] = self._truncate_content(story_dict["content"], 600)
+
+            result.append(story_dict)
+
+        return result, total
 
     async def update_story(
         self,

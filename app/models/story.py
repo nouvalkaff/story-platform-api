@@ -46,7 +46,7 @@ class Story(Base):
         nullable=False,
     )
 
-    synopsis: Mapped[str] = mapped_column(
+    synopsis: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True,
     )
@@ -60,7 +60,7 @@ class Story(Base):
         nullable=False,
     )
 
-    tags: Mapped[str] = mapped_column(
+    tags: Mapped[str | None] = mapped_column(
         String(200),
         nullable=True,
     )
