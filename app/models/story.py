@@ -2,7 +2,6 @@ from datetime import datetime
 from enum import Enum as PyEnum
 
 from sqlalchemy import (
-    Boolean,
     DateTime,
     Enum,
     ForeignKey,
@@ -24,6 +23,11 @@ class StoryGenre(str, PyEnum):
     SCI_FI = "sci-fi"
     ADVENTURE = "adventure"
     DRAMA = "drama"
+
+
+class StoryStatus(str, PyEnum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
 
 
 class Story(Base):
@@ -51,9 +55,9 @@ class Story(Base):
         nullable=False,
     )
 
-    is_published: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
+    status: Mapped[StoryStatus] = mapped_column(
+        Enum(StoryStatus, values_callable=lambda obj: [e.value for e in obj]),
+        default=StoryStatus.DRAFT,
         nullable=False,
     )
 

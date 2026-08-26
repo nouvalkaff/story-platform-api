@@ -5,7 +5,7 @@ from sqlalchemy import Row, delete, func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.story import Story, StoryGenre
+from app.models.story import Story, StoryGenre, StoryStatus
 from app.schemas.story import StoryCreateDetail, StoryUpdate
 
 
@@ -34,22 +34,30 @@ class CRUDStory:
         db: AsyncSession,
         user_id: int,
         *,
-        is_published: bool | None = None,
+        status: StoryStatus | None = None,
         page: int = 1,
         page_limit: int = 20,
-    ) -> list[Story]:
+    ) -> tuple[list[Story], int]:
         statement = select(Story).where(Story.author_id == user_id)
 
-        if is_published is not None:
-            statement = statement.where(Story.is_published == is_published)
+        if status is not None:
+            statement = statement.where(Story.status == status)
 
+        # count total before pagination
+        count_statement = select(func.count()).select_from(statement.subquery())
+
+        total_result = await db.execute(count_statement)
+
+        total = total_result.scalar_one()
+
+        # apply pagination
         statement = statement.order_by(Story.created_at.desc())
 
         statement = statement.offset((page - 1) * page_limit).limit(page_limit)
 
         result = await db.execute(statement)
 
-        return list(result.scalars().all())
+        return list(result.scalars().all()), total
 
     async def count_by_author(self, db: AsyncSession, author_id: int) -> int:
         statement = (
@@ -74,7 +82,7 @@ class CRUDStory:
         limit: int = 20,
         title: str | None = None,
         genre: StoryGenre | None = None,
-        is_published: bool | None = None,
+        status: StoryStatus | None = None,
         author_id: int | None = None,
     ) -> list[Story]:
         statement = select(Story)
@@ -83,8 +91,8 @@ class CRUDStory:
             statement = statement.where(Story.title.ilike(f"%{title}%"))
         if genre is not None:
             statement = statement.where(Story.genre == genre)
-        if is_published is not None:
-            statement = statement.where(Story.is_published == is_published)
+        if status is not None:
+            statement = statement.where(Story.status == status)
         if author_id is not None:
             statement = statement.where(Story.author_id == author_id)
 
@@ -114,11 +122,11 @@ class CRUDStory:
         db: AsyncSession,
         story: Story,
         *,
-        is_published: bool,
+        status: StoryStatus,
         published_at: datetime | None,
         updated_by: int,
     ) -> Story:
-        story.is_published = is_published
+        story.status = status
         story.published_at = published_at
         story.updated_by = updated_by
         await db.commit()

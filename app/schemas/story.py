@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.story import StoryGenre
+from app.models.story import StoryGenre, StoryStatus
 
 
 class StoryBase(BaseModel):
@@ -29,7 +29,7 @@ class StoryUpdate(BaseModel):
 
 class StoryResponse(StoryBase):
     id: int
-    is_published: bool
+    status: StoryStatus
     author_id: int
     published_at: datetime | None
     created_by: int | None
@@ -41,7 +41,13 @@ class StoryResponse(StoryBase):
 
 
 class StoryListResponse(StoryBase):
+    status: StoryStatus
     author: str | None = None
     published_at: datetime | None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StoryListPagedResponse(BaseModel):
+    total: int
+    stories: list[StoryListResponse]

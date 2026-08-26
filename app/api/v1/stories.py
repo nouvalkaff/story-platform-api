@@ -5,11 +5,12 @@ from app.api.deps import authenticate_user, validate_auth
 from app.core.exception import ConflictError
 from app.crud.crud_story import crud_story
 from app.db.session import get_db
+from app.models.story import StoryStatus
 from app.schemas.common import ApiResponse
 from app.schemas.story import (
     StoryCreate,
     StoryCreateDetail,
-    StoryListResponse,
+    StoryListPagedResponse,
     StoryResponse,
 )
 from app.services.story_service import story_service
@@ -71,7 +72,7 @@ async def get_story(
 
     message = "Success"
 
-    if not story.is_published and story.author_id != user.id:
+    if story.status != StoryStatus.PUBLISHED and story.author_id != user.id:
         message = "Story is unavailable for public access."
         story = None
 
@@ -86,7 +87,7 @@ async def get_story(
 @router.get(
     "/user/{user_id}",
     description="Get stories by user ID",
-    response_model=ApiResponse[list[StoryListResponse]],
+    response_model=ApiResponse[StoryListPagedResponse],
 )
 async def get_stories_by_user_id(
     request: Request,
@@ -97,7 +98,7 @@ async def get_stories_by_user_id(
 ):
     user = await authenticate_user(request, db)
 
-    stories = await story_service.get_stories_by_user_id(
+    stories, total = await story_service.get_stories_by_user_id(
         db,
         user_id,
         user,
@@ -112,9 +113,11 @@ async def get_stories_by_user_id(
     else:
         message = "This user has no published stories."
 
+    result = {"total": total, "stories": stories}
+
     return {
         "status_code": status.HTTP_200_OK,
         "status": True,
         "message": message,
-        "data": stories,
+        "data": result,
     }

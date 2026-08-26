@@ -1,11 +1,12 @@
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exception import ForbiddenError, NotFoundError
 from app.crud.crud_story import crud_story
 from app.crud.crud_user import crud_user
-from app.models.story import Story
+from app.models.story import Story, StoryStatus
 from app.models.user import User, UserRole
 from app.schemas.story import StoryCreate, StoryCreateDetail, StoryUpdate
 
@@ -54,23 +55,24 @@ class StoryService:
         *,
         page: int = 1,
         page_limit: int = 20,
-    ) -> list[Story]:
+    ) -> tuple[list[dict[str, Any]], int]:
         user = await crud_user.get(db, user_id)
 
         if user is None:
             raise NotFoundError("User not found")
 
-        is_published = None if current_user.id == user_id else True
+        status = None if current_user.id == user_id else StoryStatus.PUBLISHED
 
-        stories = await crud_story.get_stories_by_user_id(
+        stories, total = await crud_story.get_stories_by_user_id(
             db,
             user_id,
-            is_published=is_published,
+            status=status,
             page=page,
             page_limit=page_limit,
         )
 
-        result = []
+        result: list[dict[str, Any]] = []
+
         for each in stories:
             story_dict = {c.name: getattr(each, c.name) for c in each.__table__.columns}
 
@@ -80,7 +82,7 @@ class StoryService:
 
             result.append(story_dict)
 
-        return result
+        return result, total
 
     async def update_story(
         self,
@@ -116,7 +118,7 @@ class StoryService:
         return await crud_story.set_publication(
             db,
             story,
-            is_published=True,
+            status=StoryStatus.PUBLISHED,
             published_at=datetime.now(UTC),
             updated_by=current_user.id,
         )
@@ -132,7 +134,7 @@ class StoryService:
         return await crud_story.set_publication(
             db,
             story,
-            is_published=False,
+            status=StoryStatus.DRAFT,
             published_at=None,
             updated_by=current_user.id,
         )
