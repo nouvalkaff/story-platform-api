@@ -11,6 +11,7 @@ from app.api.deps import (
 from app.core.exception import (
     BadRequestError,
     ConflictError,
+    ForbiddenError,
     NotFoundError,
     UnauthorizedError,
 )
@@ -132,6 +133,13 @@ async def update(
         is_validate_access=True,
     )
 
+    if (
+        update_data.email is not None
+        and current_user.id != user_id
+        and current_user.role == UserRole.ADMIN
+    ):
+        raise ForbiddenError("Admins cannot change another user's email")
+
     if update_data.email is not None:
         is_email_exist = await crud_user.get_by_email(db, update_data.email)
 
@@ -181,16 +189,16 @@ async def update_password(
     current_user = await authenticate_user(
         request,
         db,
-        is_check_admin=True,
-        is_validate_access=True,
     )
 
-    if current_user.role != UserRole.ADMIN:
-        if not old_pass:
-            raise BadRequestError("old_password cannot be empty")
+    if current_user.id != user_id:
+        raise ForbiddenError("Only the account owner can change the password")
 
-        if not verify_password(old_pass, user_db.hashed_password):
-            raise UnauthorizedError("Incorrect old password")
+    if not old_pass:
+        raise BadRequestError("old_password cannot be empty")
+
+    if not verify_password(old_pass, user_db.hashed_password):
+        raise UnauthorizedError("Incorrect old password")
 
     user_db.hashed_password = get_password_hash(new_pass)
 
