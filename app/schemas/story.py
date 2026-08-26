@@ -1,8 +1,47 @@
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.story import StoryGenre, StoryStatus
+
+MAX_TAGS = 10
+MAX_TAGS_SERIALIZED_LENGTH = 200
+
+
+def _normalize_tags(value: Any) -> list[str]:
+    if value is None:
+        return []
+
+    if not isinstance(value, list):
+        raise TypeError("tags must be an array of strings")
+
+    normalized_tags: list[str] = []
+
+    for tag in value:
+        if not isinstance(tag, str):
+            raise TypeError("each tag must be a string")
+
+        normalized_tag = tag.strip()
+
+        if not normalized_tag:
+            continue
+
+        if ";" in normalized_tag:
+            raise ValueError("tags cannot contain semicolons")
+
+        normalized_tags.append(normalized_tag)
+
+    serialized_length = sum(map(len, normalized_tags)) + max(
+        len(normalized_tags) - 1, 0
+    )
+
+    if serialized_length > MAX_TAGS_SERIALIZED_LENGTH:
+        raise ValueError(
+            f"combined tags length must not exceed {MAX_TAGS_SERIALIZED_LENGTH} characters"
+        )
+
+    return normalized_tags
 
 
 class StoryBase(BaseModel):
@@ -10,7 +49,12 @@ class StoryBase(BaseModel):
     content: str = Field(min_length=1, max_length=20_000)
     synopsis: str | None = Field(default=None, max_length=500)
     genre: StoryGenre = StoryGenre.UNSPECIFIED
-    tags: str | None = Field(default=None, max_length=200)
+    tags: list[str] = Field(default_factory=list)
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def normalize_tags(cls, value: Any) -> list[str]:
+        return _normalize_tags(value)
 
 
 class StoryCreate(StoryBase):
@@ -30,7 +74,12 @@ class StoryUpdate(BaseModel):
     content: str | None = Field(default=None, min_length=1, max_length=20_000)
     synopsis: str | None = Field(default=None, max_length=500)
     genre: StoryGenre | None = None
-    tags: str | None = Field(default=None, max_length=200)
+    tags: list[str] | None = None
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def normalize_tags(cls, value: Any) -> list[str]:
+        return _normalize_tags(value)
 
 
 class StoryStatusUpdate(BaseModel):

@@ -13,12 +13,12 @@ from app.crud.crud_story import crud_story
 from app.crud.crud_user import crud_user
 from app.models.story import Story, StoryStatus
 from app.models.user import User, UserRole
-from app.schemas.story import StoryCreate, StoryCreateDetail, StoryUpdate
+from app.schemas.story import MAX_TAGS, StoryCreate, StoryCreateDetail, StoryUpdate
 from app.utils.pagination import get_pagination_offset
 
 
 class StoryService:
-    MAX_TAGS: Final[int] = 10
+    MAX_TAGS: Final[int] = MAX_TAGS
 
     async def create_story(
         self,
@@ -27,6 +27,8 @@ class StoryService:
         *,
         current_user: User,
     ) -> Story:
+        self.validate_tag_limit(story_data.tags)
+
         story_data_detail = StoryCreateDetail(
             **story_data.model_dump(),
             author_id=current_user.id,
@@ -55,13 +57,11 @@ class StoryService:
             else content
         )
 
-    def validate_tag_limit(self, tags: str | None) -> None:
+    def validate_tag_limit(self, tags: list[str] | None) -> None:
         if tags is None:
             return
 
-        tag_list = [tag.strip() for tag in tags.split(";") if tag.strip()]
-
-        if len(tag_list) > self.MAX_TAGS:
+        if len(tags) > self.MAX_TAGS:
             raise BadRequestError(f"Maximum {self.MAX_TAGS} tags allowed")
 
     async def get_stories_by_user_id(

@@ -8,7 +8,9 @@ from sqlalchemy import (
     String,
     Text,
     func,
+    text,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -60,9 +62,11 @@ class Story(Base):
         nullable=False,
     )
 
-    tags: Mapped[str | None] = mapped_column(
-        String(200),
-        nullable=True,
+    tags: Mapped[list[str]] = mapped_column(
+        ARRAY(String()),
+        default=list,
+        server_default=text("'{}'::character varying[]"),
+        nullable=False,
     )
 
     status: Mapped[StoryStatus] = mapped_column(
