@@ -25,6 +25,18 @@ class StoryService:
         )
         return await crud_story.create(db, story_data_detail)
 
+    async def get_story_by_id(
+        self,
+        db: AsyncSession,
+        story_id: int,
+    ) -> Story:
+        story = await crud_story.get_by_id(db, story_id)
+
+        if story is None:
+            raise NotFoundError("Story not found")
+
+        return story
+
     async def update_story(
         self,
         db: AsyncSession,

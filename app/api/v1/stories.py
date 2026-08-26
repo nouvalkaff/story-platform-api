@@ -7,8 +7,9 @@ from app.crud.crud_story import crud_story
 from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.schemas.story import StoryCreate, StoryCreateDetail, StoryResponse
+from app.services.story_service import story_service
 
-router = APIRouter(prefix="/your-story", tags=["Story"])
+router = APIRouter(prefix="/story", tags=["Story"])
 
 
 @router.post(
@@ -46,4 +47,32 @@ async def add(
         "status": True,
         "message": "User created successfully",
         "data": new_story,
+    }
+
+
+@router.get(
+    "/{story_id}",
+    description="Get a story by ID",
+    response_model=ApiResponse[StoryResponse | None],
+)
+async def get_story(
+    request: Request,
+    story_id: int,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    user = await authenticate_user(request, db)
+
+    story = await story_service.get_story_by_id(db, story_id)
+
+    message = "Success"
+
+    if not story.is_published and story.author_id != user.id:
+        message = "Story is unavailable for public access."
+        story = None
+
+    return {
+        "status_code": status.HTTP_200_OK,
+        "status": True,
+        "message": message,
+        "data": story,
     }

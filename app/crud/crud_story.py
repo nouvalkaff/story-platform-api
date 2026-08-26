@@ -25,6 +25,10 @@ class CRUDStory:
         result = await db.execute(select(Story).where(Story.id == story_id))
         return result.scalar_one_or_none()
 
+    async def get_by_id(self, db: AsyncSession, story_id: int) -> Story | None:
+        result = await db.execute(select(Story).where(Story.id == story_id))
+        return result.scalar_one_or_none()
+
     async def count_by_author(self, db: AsyncSession, author_id: int) -> int:
         statement = (
             select(func.count()).select_from(Story).where(Story.author_id == author_id)
