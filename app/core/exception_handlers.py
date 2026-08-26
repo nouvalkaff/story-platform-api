@@ -19,16 +19,13 @@ SENSITIVE_FIELD_NAMES = frozenset(
         "authorization",
         "credential",
         "credentials",
-        "email",
-        "new_password",
-        "old_password",
         "password",
         "refresh_token",
         "secret",
         "token",
     }
 )
-SENSITIVE_MESSAGE_TERMS = ("email", "password", "token", "credential", "secret")
+SENSITIVE_MESSAGE_TERMS = ("password", "token", "credential", "secret")
 
 
 def _validation_error_message(errors: Sequence[ErrorDetails]) -> str:
@@ -72,12 +69,8 @@ def _validation_error_message(errors: Sequence[ErrorDetails]) -> str:
 
 
 def _app_exception_message(exc: AppException) -> str:
-    """Hide authentication and credential-related error details from clients."""
     message = exc.message
-    if exc.status_code in {
-        status.HTTP_401_UNAUTHORIZED,
-        status.HTTP_403_FORBIDDEN,
-    } or any(term in message.casefold() for term in SENSITIVE_MESSAGE_TERMS):
+    if any(term in message.casefold() for term in SENSITIVE_MESSAGE_TERMS):
         return exc.default_message
 
     return message
