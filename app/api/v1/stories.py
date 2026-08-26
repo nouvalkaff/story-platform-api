@@ -193,6 +193,33 @@ async def update_story(
     }
 
 
+@router.delete(
+    "/{story_id}",
+    description="Delete a story",
+    response_model=ApiResponse[None],
+    dependencies=[Depends(validate_auth)],
+)
+async def delete_story(
+    request: Request,
+    story_id: int,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    current_user = await authenticate_user(request, db)
+
+    await story_service.delete_story(
+        db,
+        story_id,
+        current_user=current_user,
+    )
+
+    return {
+        "status_code": status.HTTP_200_OK,
+        "status": True,
+        "message": "Story deleted successfully",
+        "data": None,
+    }
+
+
 @router.get(
     "/{story_id}",
     description="Get a story by ID",

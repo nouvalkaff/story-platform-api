@@ -186,10 +186,7 @@ async def update_password(
     if user_db is None:
         raise NotFoundError()
 
-    current_user = await authenticate_user(
-        request,
-        db,
-    )
+    current_user = await authenticate_user(request, db)
 
     if current_user.id != user_id:
         raise ForbiddenError("Only the account owner can change the password")
@@ -269,12 +266,10 @@ async def hard_delete(
     if user_db is None:
         raise NotFoundError()
 
-    await authenticate_user(
-        request,
-        db,
-        is_check_admin=True,
-        is_validate_access=True,
-    )
+    current_user = await authenticate_user(request, db)
+
+    if current_user.id != user_id:
+        raise ForbiddenError("Only the account owner can delete this account")
 
     story_count = await crud_story.count_by_author(db, user_id)
     if story_count > 0 and not is_agree:

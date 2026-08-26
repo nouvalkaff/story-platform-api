@@ -170,7 +170,11 @@ class StoryService:
         *,
         current_user: User,
     ) -> None:
-        story = await self._get_editable_story(db, story_id, current_user)
+        story = await self.get_story_by_id(db, story_id)
+
+        if story.author_id != current_user.id:
+            raise ForbiddenError("Only the story owner can delete this story")
+
         await crud_story.delete(db, story)
 
     async def update_story_status(
