@@ -35,6 +35,8 @@ class CRUDStory:
         user_id: int,
         *,
         is_published: bool | None = None,
+        page: int = 1,
+        page_limit: int = 20,
     ) -> list[Story]:
         statement = select(Story).where(Story.author_id == user_id)
 
@@ -42,6 +44,8 @@ class CRUDStory:
             statement = statement.where(Story.is_published == is_published)
 
         statement = statement.order_by(Story.created_at.desc())
+
+        statement = statement.offset((page - 1) * page_limit).limit(page_limit)
 
         result = await db.execute(statement)
 

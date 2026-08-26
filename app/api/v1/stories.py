@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import authenticate_user, validate_auth
@@ -91,16 +91,24 @@ async def get_story(
 async def get_stories_by_user_id(
     request: Request,
     user_id: int,
+    page: int = Query(default=1, ge=1),
+    page_limit: int = Query(default=5, ge=1),
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     user = await authenticate_user(request, db)
 
-    stories = await story_service.get_stories_by_user_id(db, user_id, user)
+    stories = await story_service.get_stories_by_user_id(
+        db,
+        user_id,
+        user,
+        page=page,
+        page_limit=page_limit,
+    )
 
     if stories:
         message = "Success"
     elif user.id == user_id:
-        message = "You have no stories yet."
+        message = "No stories found"
     else:
         message = "This user has no published stories."
 

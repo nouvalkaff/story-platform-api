@@ -51,6 +51,9 @@ class StoryService:
         db: AsyncSession,
         user_id: int,
         current_user: User,
+        *,
+        page: int = 1,
+        page_limit: int = 20,
     ) -> list[Story]:
         user = await crud_user.get(db, user_id)
 
@@ -60,7 +63,11 @@ class StoryService:
         is_published = None if current_user.id == user_id else True
 
         stories = await crud_story.get_stories_by_user_id(
-            db, user_id, is_published=is_published
+            db,
+            user_id,
+            is_published=is_published,
+            page=page,
+            page_limit=page_limit,
         )
 
         result = []
