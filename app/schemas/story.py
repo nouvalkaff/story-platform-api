@@ -24,9 +24,13 @@ class StoryCreateDetail(StoryCreate):
 
 
 class StoryUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     title: str | None = None
-    content: str | None = None
+    content: str | None = Field(default=None, min_length=1, max_length=20_000)
+    synopsis: str | None = Field(default=None, max_length=500)
     genre: StoryGenre | None = None
+    tags: str | None = Field(default=None, max_length=200)
 
 
 class StoryStatusUpdate(BaseModel):

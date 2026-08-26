@@ -15,6 +15,7 @@ from app.schemas.story import (
     StoryResponse,
     StoryStatusResponse,
     StoryStatusUpdate,
+    StoryUpdate,
 )
 from app.services.story_service import story_service
 
@@ -159,6 +160,35 @@ async def update_story_status(
         "status_code": status.HTTP_200_OK,
         "status": True,
         "message": message,
+        "data": story,
+    }
+
+
+@router.patch(
+    "/{story_id}",
+    description="Update a story",
+    response_model=ApiResponse[StoryResponse],
+    dependencies=[Depends(validate_auth)],
+)
+async def update_story(
+    request: Request,
+    story_id: int,
+    update_data: StoryUpdate,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    current_user = await authenticate_user(request, db)
+
+    story = await story_service.update_story(
+        db,
+        story_id,
+        update_data,
+        current_user=current_user,
+    )
+
+    return {
+        "status_code": status.HTTP_200_OK,
+        "status": True,
+        "message": "Story updated successfully",
         "data": story,
     }
 

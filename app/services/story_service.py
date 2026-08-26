@@ -3,7 +3,12 @@ from typing import Any, Final
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exception import BadRequestError, ForbiddenError, NotFoundError
+from app.core.exception import (
+    BadRequestError,
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+)
 from app.crud.crud_story import crud_story
 from app.crud.crud_user import crud_user
 from app.models.story import Story, StoryStatus
@@ -43,9 +48,9 @@ class StoryService:
         return story
 
     @staticmethod
-    def _truncate_content(content: str, limit_len: int):
+    def _truncate_content(content: str, limit_len: int, suffix: str):
         return (
-            f"{content[:limit_len].strip()}...[READ_MORE]"
+            f"{content[:limit_len].strip()}{suffix}"
             if len(content) > limit_len
             else content
         )
@@ -90,7 +95,9 @@ class StoryService:
 
             story_dict["author"] = current_user.full_name
 
-            story_dict["content"] = self._truncate_content(story_dict["content"], 100)
+            story_dict["content"] = self._truncate_content(
+                story_dict["content"], 100, "...[READ_MORE]"
+            )
 
             result.append(story_dict)
 
@@ -122,7 +129,9 @@ class StoryService:
         for each in stories:
             story_dict = {c.name: getattr(each, c.name) for c in each.__table__.columns}
 
-            story_dict["content"] = self._truncate_content(story_dict["content"], 600)
+            story_dict["content"] = self._truncate_content(
+                story_dict["content"], 500, "...[READ_MORE]"
+            )
 
             result.append(story_dict)
 
@@ -137,9 +146,22 @@ class StoryService:
         current_user: User,
     ) -> Story:
         story = await self._get_editable_story(db, story_id, current_user)
-        return await crud_story.update(
+
+        if update_data.title is not None and update_data.title != story.title:
+            title_exists = await crud_story.get_by_title(db, update_data.title)
+
+            if title_exists is not None:
+                raise ConflictError(f"Title '{update_data.title}' already exists.")
+
+        self.validate_tag_limit(update_data.tags)
+
+        story = await crud_story.update(
             db, story, update_data, updated_by=current_user.id
         )
+
+        story.content = self._truncate_content(story.content, 500, "...[TRUNCATED]")
+
+        return story
 
     async def delete_story(
         self,
