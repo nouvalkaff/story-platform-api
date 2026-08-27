@@ -238,10 +238,23 @@ STORY_DETAILS: dict[str, StoryDetails] = {
 }
 
 
-def seed_stories() -> None:
-    """Insert ten idempotent stories for each standard seed user."""
+def seed_stories() -> bool:
+    """Insert standard stories, skipping the seed when all of them exist."""
     with SessionLocal() as session:
         try:
+            expected_titles = {
+                story["title"]
+                for stories in (ADMIN_STORIES, REGULAR_USER_STORIES)
+                for story in stories
+            }
+            existing_titles = set(
+                session.scalars(
+                    select(Story.title).where(Story.title.in_(expected_titles))
+                ).all()
+            )
+            if existing_titles == expected_titles:
+                return False
+
             users = {
                 email: session.scalar(select(User).where(User.email == email))
                 for email in (ADMIN_EMAIL, REGULAR_USER_EMAIL)
@@ -286,6 +299,7 @@ def seed_stories() -> None:
                     )
 
             session.commit()
+            return True
         except Exception:
             session.rollback()
             raise

@@ -22,10 +22,19 @@ USERS = (
 )
 
 
-def seed_users() -> None:
-    """Insert the standard seed users when their email is not already present."""
+def seed_users() -> bool:
+    """Insert standard users, skipping the seed when all of them already exist."""
     with SessionLocal() as session:
         try:
+            seed_emails = [user_data["email"] for user_data in USERS]
+            existing_emails = set(
+                session.scalars(
+                    select(User.email).where(User.email.in_(seed_emails))
+                ).all()
+            )
+            if len(existing_emails) == len(USERS):
+                return False
+
             for user_data in USERS:
                 existing_user = session.scalar(
                     select(User).where(User.email == user_data["email"])
@@ -43,6 +52,7 @@ def seed_users() -> None:
                 )
 
             session.commit()
+            return True
         except Exception:
             session.rollback()
             raise
