@@ -123,6 +123,229 @@ For ready-to-run requests and examples, see the [Postman Documentation](https://
 | `DELETE` | `/api/v1/story/{story_id}` | Owner | Permanently delete a story. |
 | `GET` | `/api/v1/story/{story_id}` | Public | Return a published story; draft content is not exposed. |
 
+Supported genres are `unspecified`, `romance`, `horror`, `mystery`, `fantasy`, `sci-fi`, `adventure`, and `drama`.
+
+
+Story constraints:
+
+  
+
+- Titles must be unique and fit the 100-character database column.
+
+- Content must contain 1–20,000 characters.
+
+- Synopsis is optional and limited to 500 characters.
+
+- A story may have up to 10 tags with a combined serialized length of 200 characters.
+
+- New stories are created as `draft`; publication is handled through the status endpoint.
+
+  
+
+### Create a Story
+
+  
+
+Request:
+
+  
+
+```bash
+
+curl -X POST http://localhost:8000/api/v1/story/add \
+
+  -H "Authorization: Bearer <access-token>" \
+
+  -H "Content-Type: application/json" \
+
+  -d '{
+
+    "title": "The Lighthouse Beyond the Fog",
+
+    "content": "Mara reached the abandoned lighthouse before the storm and found its lamp still burning, although nobody had lived there for decades.",
+
+    "synopsis": "A sailor discovers why an abandoned lighthouse continues to guide lost ships.",
+
+    "genre": "mystery",
+
+    "tags": ["lighthouse", "ocean", "mystery"]
+
+  }'
+
+```
+
+  
+
+Response (`201 Created`):
+
+  
+
+```json
+
+{
+
+  "status_code": 201,
+
+  "status": true,
+
+  "message": "Story created successfully",
+
+  "data": {
+
+    "title": "The Lighthouse Beyond the Fog",
+
+    "content": "Mara reached the abandoned lighthouse before the storm and found its lamp still burning, although nobody had lived there for decades.",
+
+    "synopsis": "A sailor discovers why an abandoned lighthouse continues to guide lost ships.",
+
+    "genre": "mystery",
+
+    "tags": ["lighthouse", "ocean", "mystery"],
+
+    "id": 21,
+
+    "status": "draft",
+
+    "author_id": 2,
+
+    "published_at": null,
+
+    "created_by": 2,
+
+    "created_at": "2026-08-27T09:00:00Z",
+
+    "updated_by": 2,
+
+    "updated_at": "2026-08-27T09:00:00Z"
+
+  }
+
+}
+
+```
+
+  
+
+### Publish a Story
+
+  
+
+Request:
+
+  
+
+```bash
+
+curl -X PATCH http://localhost:8000/api/v1/story/21/status \
+
+  -H "Authorization: Bearer <access-token>" \
+
+  -H "Content-Type: application/json" \
+
+  -d '{"status": "published"}'
+
+```
+
+  
+
+Response (`200 OK`):
+
+  
+
+```json
+
+{
+
+  "status_code": 200,
+
+  "status": true,
+
+  "message": "Story published successfully",
+
+  "data": {
+
+    "id": 21,
+
+    "title": "The Lighthouse Beyond the Fog",
+
+    "status": "published",
+
+    "published_at": "2026-08-27T09:05:00Z"
+
+  }
+
+}
+
+```
+
+  
+
+### List Published Stories
+
+  
+
+Request:
+
+  
+
+```bash
+
+curl "http://localhost:8000/api/v1/story/published?page=1&size=5&q=lighthouse"
+
+```
+
+  
+
+Response (`200 OK`):
+
+  
+
+```json
+
+{
+
+  "status_code": 200,
+
+  "status": true,
+
+  "message": "Success",
+
+  "data": {
+
+    "total": 1,
+
+    "page": 1,
+
+    "size": 5,
+
+    "stories": [
+
+      {
+
+        "title": "The Lighthouse Beyond the Fog",
+
+        "content": "Mara reached the abandoned lighthouse before the storm and found its lamp still burning, although nobody had lived there for decades.",
+
+        "synopsis": "A sailor discovers why an abandoned lighthouse continues to guide lost ships.",
+
+        "genre": "mystery",
+
+        "tags": ["lighthouse", "ocean", "mystery"],
+
+        "status": "published",
+
+        "published_at": "2026-08-27T09:05:00Z"
+
+      }
+
+    ]
+
+  }
+
+}
+
+```
+
 ## Project Structure
 
 ```text
