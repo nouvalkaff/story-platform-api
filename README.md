@@ -87,6 +87,19 @@ Story Platform API provides account, authentication, and short-story workflows f
 
 The API is available at `http://127.0.0.1:8000`. Interactive OpenAPI documentation is served at `http://127.0.0.1:8000/docs`, with ReDoc at `http://127.0.0.1:8000/redoc`.
 
+### Docker
+
+Docker Compose uses `.env.docker`, independently from the default `.env` used by
+non-Docker commands. In this setup, `.env` targets a local PostgreSQL server while
+`.env.docker` targets Supabase. The Supabase password must be URL-encoded.
+
+```bash
+docker compose up --build
+```
+
+To customise Docker-only values, edit `.env.docker`. The tracked
+`.env.docker.example` is the template for recreating it.
+
 ## Environment Variables
 
 | Variable | Required | Description | Example |

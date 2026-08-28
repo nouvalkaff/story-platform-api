@@ -16,7 +16,9 @@ class Settings(BaseSettings):
     algorithm: str = DEFAULT_ALGO
     access_token_expire_minutes: int = DEFAULT_EXPIRE_MIN
 
-    model_config = SettingsConfigDict(env_file=".env")
+    # The same .env file is also read by Docker Compose and therefore contains
+    # POSTGRES_* variables that are not application settings.
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
     def sql_echo(self) -> bool:

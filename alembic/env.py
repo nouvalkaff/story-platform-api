@@ -22,8 +22,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# OVERRIDE: pakai URL dari .env
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+# ConfigParser treats % as interpolation syntax. Database passwords are
+# URL-encoded, so escape percent signs before passing the URL to Alembic.
+config.set_main_option(
+    "sqlalchemy.url", get_settings().database_url.replace("%", "%%")
+)
 
 
 def run_migrations_offline() -> None:

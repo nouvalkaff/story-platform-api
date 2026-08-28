@@ -1,8 +1,10 @@
 #!/bin/sh
 
-set -u
+set -eu
 
-uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+python -m alembic upgrade head
+
+uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}" &
 server_pid=$!
 
 cleanup() {
