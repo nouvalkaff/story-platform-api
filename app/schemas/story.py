@@ -95,15 +95,17 @@ class StoryStatusResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class StoryResponse(StoryBase):
+class StoryResponse(BaseModel):
     id: int
+    author_name: str | None = ""
+    title: str
+    content: str
+    synopsis: str | None
+    genre: StoryGenre
+    tags: list[str]
     status: StoryStatus
-    author_id: int
     published_at: datetime | None
-    created_by: int | None
     created_at: datetime
-    updated_by: int | None
-    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 

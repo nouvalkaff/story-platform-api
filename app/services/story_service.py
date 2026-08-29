@@ -13,7 +13,13 @@ from app.crud.crud_story import crud_story
 from app.crud.crud_user import crud_user
 from app.models.story import Story, StoryStatus
 from app.models.user import User, UserRole
-from app.schemas.story import MAX_TAGS, StoryCreate, StoryCreateDetail, StoryUpdate
+from app.schemas.story import (
+    MAX_TAGS,
+    StoryCreate,
+    StoryCreateDetail,
+    StoryResponse,
+    StoryUpdate,
+)
 from app.utils.pagination import get_pagination_offset
 
 
@@ -53,7 +59,7 @@ class StoryService:
         self,
         db: AsyncSession,
         query: str,
-    ) -> Story:
+    ) -> StoryResponse:
         try:
             story = await crud_story.get_by_id(db, int(query))
         except (TypeError, ValueError):
@@ -65,7 +71,15 @@ class StoryService:
         if story is None:
             raise NotFoundError("Story not found")
 
-        return story
+        result = StoryResponse(**story.to_dict())
+
+        author_id = story.author_id
+
+        user = await crud_user.get(db, author_id)
+
+        result.author_name = "" if user is None else user.full_name
+
+        return result
 
     @staticmethod
     def _truncate_content(content: str, limit_len: int, suffix: str):

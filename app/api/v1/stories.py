@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import authenticate_user, validate_auth
@@ -220,19 +220,19 @@ async def delete_story(
 
 
 @router.get(
-    "/details",
+    "/details/{param}",
     description="Publicly get a published story by ID or title",
     response_model=ApiResponse[StoryResponse | None],
 )
 async def get_story(
-    q: str = Query(..., min_length=1, description="Story ID or exact title"),
+    param: str = Path(..., min_length=1, description="Story ID or exact title"),
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    q = q.strip()
-    if not q:
-        raise BadRequestError("Query must not be empty")
+    param = param.strip()
+    if not param:
+        raise BadRequestError("Parameter must not be empty")
 
-    story = await story_service.get_story_by_id_or_title(db, q)
+    story = await story_service.get_story_by_id_or_title(db, param)
 
     message = "Success"
 
