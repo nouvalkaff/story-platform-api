@@ -448,6 +448,8 @@ When the application is running:
 
 - OpenAPI schema: `http://localhost:8000/openapi.json`
 
+- Postman collection documentation: [Story Platform API](https://documenter.getpostman.com/view/23758510/2sBYAuSWf2)
+
 - Health check: `http://localhost:8000/health`
 
   
