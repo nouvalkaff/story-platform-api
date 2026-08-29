@@ -29,6 +29,10 @@ class CRUDStory:
         result = await db.execute(select(Story).where(Story.id == story_id))
         return result.scalar_one_or_none()
 
+    async def get_story_by_title(self, db: AsyncSession, title: str) -> Story | None:
+        result = await db.execute(select(Story).where(Story.title == title))
+        return result.scalar_one_or_none()
+
     async def get_stories_by_user_id(
         self,
         db: AsyncSession,

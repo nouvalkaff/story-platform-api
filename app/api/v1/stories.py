@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import authenticate_user, validate_auth
-from app.core.exception import ConflictError
+from app.core.exception import BadRequestError, ConflictError
 from app.crud.crud_story import crud_story
 from app.db.session import get_db
 from app.models.story import StoryStatus
@@ -72,7 +72,7 @@ async def get_stories_by_user_id(
     request: Request,
     user_id: int,
     page: int = Query(default=1, ge=1),
-    page_limit: int = Query(default=5, ge=1),
+    page_limit: int = Query(default=5, ge=1, le=50),
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     user = await authenticate_user(request, db)
@@ -220,15 +220,19 @@ async def delete_story(
 
 
 @router.get(
-    "/{story_id}",
-    description="Publicly get a published story by ID",
+    "/details",
+    description="Publicly get a published story by ID or title",
     response_model=ApiResponse[StoryResponse | None],
 )
 async def get_story(
-    story_id: int,
+    q: str = Query(..., min_length=1, description="Story ID or exact title"),
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    story = await story_service.get_story_by_id(db, story_id)
+    q = q.strip()
+    if not q:
+        raise BadRequestError("Query must not be empty")
+
+    story = await story_service.get_story_by_id_or_title(db, q)
 
     message = "Success"
 

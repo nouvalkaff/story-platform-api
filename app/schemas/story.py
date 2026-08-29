@@ -109,6 +109,7 @@ class StoryResponse(StoryBase):
 
 
 class AllStoryListResponse(StoryBase):
+    id: int
     status: StoryStatus
     published_at: datetime | None
 

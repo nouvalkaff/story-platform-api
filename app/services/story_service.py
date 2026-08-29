@@ -49,6 +49,24 @@ class StoryService:
 
         return story
 
+    async def get_story_by_id_or_title(
+        self,
+        db: AsyncSession,
+        query: str,
+    ) -> Story:
+        try:
+            story = await crud_story.get_by_id(db, int(query))
+        except (TypeError, ValueError):
+            story = await crud_story.get_story_by_title(db, query)
+        else:
+            if story is None:
+                story = await crud_story.get_story_by_title(db, query)
+
+        if story is None:
+            raise NotFoundError("Story not found")
+
+        return story
+
     @staticmethod
     def _truncate_content(content: str, limit_len: int, suffix: str):
         return (
