@@ -61,25 +61,23 @@ class StoryService:
         query: str,
     ) -> StoryResponse:
         try:
-            story = await crud_story.get_by_id(db, int(query))
+            story_with_author = await crud_story.get_by_id_with_author(db, int(query))
         except (TypeError, ValueError):
-            story = await crud_story.get_story_by_title(db, query)
+            story_with_author = await crud_story.get_by_title_with_author(db, query)
         else:
-            if story is None:
-                story = await crud_story.get_story_by_title(db, query)
+            if story_with_author is None:
+                story_with_author = await crud_story.get_by_title_with_author(db, query)
 
-        if story is None:
+        if story_with_author is None:
             raise NotFoundError("Story not found")
 
-        result = StoryResponse(**story.to_dict())
+        story, author_name = story_with_author
 
-        author_id = story.author_id
+        story_data = story.to_dict()
 
-        user = await crud_user.get(db, author_id)
+        story_data["author_name"] = author_name or ""
 
-        result.author_name = "" if user is None else user.full_name
-
-        return result
+        return StoryResponse(**story_data)
 
     @staticmethod
     def _truncate_content(content: str, limit_len: int, suffix: str):
@@ -158,12 +156,14 @@ class StoryService:
 
         result: list[dict[str, Any]] = []
 
-        for each in stories:
+        for each, full_name in stories:
             story_dict = {c.name: getattr(each, c.name) for c in each.__table__.columns}
 
             story_dict["content"] = self._truncate_content(
                 story_dict["content"], 500, "...[READ_MORE]"
             )
+
+            story_dict["author_name"] = full_name or ""
 
             result.append(story_dict)
 

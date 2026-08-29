@@ -110,12 +110,8 @@ class StoryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class AllStoryListResponse(StoryBase):
-    id: int
-    status: StoryStatus
-    published_at: datetime | None
-
-    model_config = ConfigDict(from_attributes=True)
+class AllStoryListResponse(StoryResponse):
+    pass
 
 
 class StoryListResponse(AllStoryListResponse):

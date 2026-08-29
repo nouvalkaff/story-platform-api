@@ -6,6 +6,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.story import Story, StoryGenre, StoryStatus
+from app.models.user import User
 from app.schemas.story import StoryCreateDetail, StoryUpdate
 
 
@@ -29,9 +30,27 @@ class CRUDStory:
         result = await db.execute(select(Story).where(Story.id == story_id))
         return result.scalar_one_or_none()
 
-    async def get_story_by_title(self, db: AsyncSession, title: str) -> Story | None:
-        result = await db.execute(select(Story).where(Story.title == title))
-        return result.scalar_one_or_none()
+    async def get_by_id_with_author(
+        self, db: AsyncSession, story_id: int
+    ) -> tuple[Story, str | None] | None:
+        result = await db.execute(
+            select(Story, User.full_name)
+            .join(User, Story.author_id == User.id)
+            .where(Story.id == story_id)
+        )
+        row = result.one_or_none()
+        return None if row is None else (row[0], row[1])
+
+    async def get_by_title_with_author(
+        self, db: AsyncSession, title: str
+    ) -> tuple[Story, str | None] | None:
+        result = await db.execute(
+            select(Story, User.full_name)
+            .join(User, Story.author_id == User.id)
+            .where(Story.title == title)
+        )
+        row = result.one_or_none()
+        return None if row is None else (row[0], row[1])
 
     async def get_stories_by_user_id(
         self,
@@ -70,8 +89,12 @@ class CRUDStory:
         skip: int,
         limit: int,
         q: str | None = None,
-    ) -> tuple[list[Story], int]:
-        statement = select(Story).where(Story.status == StoryStatus.PUBLISHED)
+    ) -> tuple[list[tuple[Story, str | None]], int]:
+        statement = (
+            select(Story, User.full_name)
+            .join(User, Story.author_id == User.id)
+            .where(Story.status == StoryStatus.PUBLISHED)
+        )
 
         if q is not None:
             search_term = f"%{q}%"
@@ -89,7 +112,9 @@ class CRUDStory:
 
         result = await db.execute(statement)
 
-        return list(result.scalars().all()), total
+        stories = [(row[0], row[1]) for row in result.all()]
+
+        return stories, total
 
     async def count_by_author(self, db: AsyncSession, author_id: int) -> int:
         statement = (
