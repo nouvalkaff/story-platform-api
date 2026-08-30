@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import authenticate_user, validate_auth
@@ -20,6 +20,37 @@ from app.schemas.story import (
 from app.services.story_service import story_service
 
 router = APIRouter(prefix="/story", tags=["Story"])
+
+
+def _parse_genre_query(value: str | None) -> StoryGenre | None:
+    value = value.strip() if value is not None else None
+    if not value:
+        return None
+
+    try:
+        return StoryGenre(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                "Invalid genre. Allowed values: unspecified, romance, horror, "
+                "mystery, fantasy, sci-fi, adventure, drama"
+            ),
+        ) from exc
+
+
+def _parse_order_query(value: str | None) -> StoryOrder:
+    value = value.strip() if value is not None else None
+    if not value:
+        return StoryOrder.DESC
+
+    try:
+        return StoryOrder(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Invalid order. Allowed values: asc, desc",
+        ) from exc
 
 
 @router.post(
@@ -111,12 +142,21 @@ async def get_published_stories(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=5, ge=1),
     q: str | None = Query(default=None),
-    genre: StoryGenre | None = Query(default=None),  # noqa: B008
-    order: StoryOrder = Query(default=StoryOrder.DESC),  # noqa: B008
+    genre: str | None = Query(
+        default=None,
+        json_schema_extra={"enum": [genre.value for genre in StoryGenre]},
+    ),
+    order: str | None = Query(
+        default=StoryOrder.DESC.value,
+        json_schema_extra={"enum": [order.value for order in StoryOrder]},
+    ),
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
+    genre_value = _parse_genre_query(genre)
+    order_value = _parse_order_query(order)
+
     stories, total = await story_service.get_published_stories(
-        db, page=page, size=size, q=q, genre=genre, order=order
+        db, page=page, size=size, q=q, genre=genre_value, order=order_value
     )
 
     return {
