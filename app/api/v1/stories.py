@@ -5,7 +5,7 @@ from app.api.deps import authenticate_user, validate_auth
 from app.core.exception import BadRequestError, ConflictError
 from app.crud.crud_story import crud_story
 from app.db.session import get_db
-from app.models.story import StoryStatus
+from app.models.story import StoryGenre, StoryOrder, StoryStatus
 from app.schemas.common import ApiResponse
 from app.schemas.story import (
     PublishedStoryPagedResponse,
@@ -111,13 +111,12 @@ async def get_published_stories(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=5, ge=1),
     q: str | None = Query(default=None),
+    genre: StoryGenre | None = Query(default=None),  # noqa: B008
+    order: StoryOrder = Query(default=StoryOrder.DESC),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     stories, total = await story_service.get_published_stories(
-        db,
-        page=page,
-        size=size,
-        q=q,
+        db, page=page, size=size, q=q, genre=genre, order=order
     )
 
     return {

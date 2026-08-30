@@ -5,7 +5,7 @@ from sqlalchemy import Row, delete, func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.story import Story, StoryGenre, StoryStatus
+from app.models.story import Story, StoryGenre, StoryOrder, StoryStatus
 from app.models.user import User
 from app.schemas.story import StoryCreateDetail, StoryUpdate
 
@@ -89,6 +89,8 @@ class CRUDStory:
         skip: int,
         limit: int,
         q: str | None = None,
+        genre: StoryGenre | None = None,
+        order: StoryOrder = StoryOrder.DESC,
     ) -> tuple[list[tuple[Story, str | None]], int]:
         statement = (
             select(Story, User.full_name)
@@ -100,13 +102,19 @@ class CRUDStory:
             search_term = f"%{q}%"
             statement = statement.where(Story.title.ilike(search_term))
 
+        if genre is not None:
+            statement = statement.where(Story.genre == genre)
+
         count_statement = select(func.count()).select_from(statement.subquery())
 
         total_result = await db.execute(count_statement)
 
         total = total_result.scalar_one()
 
-        statement = statement.order_by(Story.published_at.desc(), Story.id.desc())
+        if order == StoryOrder.ASC:
+            statement = statement.order_by(Story.id.asc(), Story.id.asc())
+        else:
+            statement = statement.order_by(Story.id.desc(), Story.id.desc())
 
         statement = statement.offset(skip).limit(limit)
 

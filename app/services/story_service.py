@@ -11,7 +11,7 @@ from app.core.exception import (
 )
 from app.crud.crud_story import crud_story
 from app.crud.crud_user import crud_user
-from app.models.story import Story, StoryStatus
+from app.models.story import Story, StoryGenre, StoryOrder, StoryStatus
 from app.models.user import User, UserRole
 from app.schemas.story import (
     MAX_TAGS,
@@ -140,6 +140,8 @@ class StoryService:
         page: int,
         size: int,
         q: str | None = None,
+        genre: StoryGenre | None = None,
+        order: StoryOrder = StoryOrder.DESC,
     ) -> tuple[list[dict[str, Any]], int]:
         search_query = q.strip() if q is not None else None
 
@@ -152,6 +154,8 @@ class StoryService:
             skip=skip,
             limit=size,
             q=search_query,
+            genre=genre,
+            order=order,
         )
 
         result: list[dict[str, Any]] = []

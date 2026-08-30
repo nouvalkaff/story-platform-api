@@ -262,7 +262,7 @@ All versioned routes use the `/api/v1` prefix.
 | `DELETE` | `/api/v1/users/hdelete/{user_id}`         | Owner                        | Permanently delete an account.                                        |
 | `POST`   | `/api/v1/story/add`                       | Authenticated                | Create a draft story.                                                 |
 | `GET`    | `/api/v1/story/user/{user_id}`            | Authenticated                | List a user's stories with pagination.                                |
-| `GET`    | `/api/v1/story/published`                 | Public                       | List published stories; supports `page`, `size`, and title query `q`. |
+| `GET`    | `/api/v1/story/published`                 | Public                       | List published stories; supports `page`, `size`, title query `q`, enum query `genre`, and order (`asc` or `desc`; default `desc`). |
 | `GET`    | `/api/v1/story/details/{param}`           | Public                       | Get a published story by numeric ID or exact title.                   |
 | `PATCH`  | `/api/v1/story/{story_id}/status`         | Owner or admin               | Change status to `draft` or `published`.                              |
 | `PATCH`  | `/api/v1/story/{story_id}`                | Owner or admin               | Update a story.                                                       |

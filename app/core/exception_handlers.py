@@ -57,6 +57,11 @@ def _validation_error_message(errors: Sequence[ErrorDetails]) -> str:
     if error["type"] == "missing":
         return f"{field} is required"
     if error["type"] == "enum":
+        if field == "genre":
+            return (
+                "Invalid genre. Allowed values: unspecified, romance, horror, "
+                "mystery, fantasy, sci-fi, adventure, drama"
+            )
         context = error.get("ctx")
         expected = context.get("expected") if context else None
         if isinstance(expected, str):

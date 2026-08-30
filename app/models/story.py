@@ -32,6 +32,11 @@ class StoryStatus(str, PyEnum):
     PUBLISHED = "published"
 
 
+class StoryOrder(str, PyEnum):
+    ASC = "asc"
+    DESC = "desc"
+
+
 class Story(Base):
     __tablename__ = "stories"
 
